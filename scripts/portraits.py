@@ -12,6 +12,10 @@ FACES = {  # Vision face boxes (normalised, origin bottom-left)
   "9": (0.2599, 0.2346, 0.4661, 0.2784),
 }
 SCALE_FIX = {"9": 0.74}  # Vision boxed Vedant's face tight; bring him in line with the others
+# Vedant's photo was shot under hard top light: pull exposure down and roll off
+# the highlights so the hair glare matches the other three.
+FACE_TARGET = {"9": 0.42}
+SHOULDER = {"9": (0.32, 0.22)}  # knee, slope above the knee
 NAMES = {"6": "chng-en", "7": "christian-huray", "8": "shaurya-wadhawan", "9": "vedant-rastogi"}
 W, H = 900, 1125
 FACE_H, CX, CY = 0.34, 0.5, 0.42
@@ -37,7 +41,7 @@ for k, (fx, fy, fw, fh) in FACES.items():
     y0, y1 = int(H * CY - fh_px * 0.25), int(H * CY + fh_px * 0.25)
     x0, x1 = int(W * CX - fh_px * 0.25), int(W * CX + fh_px * 0.25)
     face_l = float(np.median(rgb[y0:y1, x0:x1] @ LUMA))
-    g = np.log(0.48) / np.log(max(face_l, 1e-3))
+    g = np.log(FACE_TARGET.get(k, 0.48)) / np.log(max(face_l, 1e-3))
     rgb = np.clip(rgb, 1e-4, 1) ** g
     # neutralise casts using the face only, then calm saturation
     means = rgb[y0:y1, x0:x1].reshape(-1, 3).mean(axis=0)
@@ -60,7 +64,14 @@ for k, (fx, fy, fw, fh) in FACES.items():
     sel = (alpha > 0.5) & (yy < chin)
     lo, hi = np.percentile(l[sel], 3), np.percentile(l[sel], 97)
     l = np.clip((l - lo) / (hi - lo) * 0.88 + 0.04, 0, 1)
-    l = l * l * (3 - 2 * l) * 0.6 + l * 0.4
+    if k in SHOULDER:
+        # darken and compress only the hair, above the forehead
+        knee, slope = SHOULDER[k]
+        brow = H * CY - fh_px * 0.32
+        hm = np.clip((brow - yy) / (fh_px * 0.18), 0, 1)
+        hm = hm * hm * (3 - 2 * hm)
+        hair = (np.minimum(l, knee) + np.maximum(l - knee, 0) * slope) * 0.72
+        l = l * (1 - hm) + hair * hm
     tone = SHADOW + (LIGHT - SHADOW) * l[..., None]
     Image.fromarray((np.dstack([tone, alpha]) * 255).astype(np.uint8)).save(f"{out}/{NAMES[k]}-tone.png", optimize=True)
     print(NAMES[k], round(s, 2), round(float(face_l), 3), round(float(g), 2))

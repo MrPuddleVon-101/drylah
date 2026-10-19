@@ -69,7 +69,7 @@ const WINDOW_HW = 0.27;
 const WINDOW_Y = [0.12, 0.32];
 const WICK_Y = [0.06, 1.75];
 
-const GREEN = '#1f5b40';
+const GREEN = '#17704a';
 const ARROW = '#5cc8ff';
 
 /* ---------------------------------------------------------------- helpers */
@@ -212,9 +212,9 @@ function leafGeometry(rand: () => number) {
   const pos: number[] = [];
   const col: number[] = [];
   const idx: number[] = [];
-  const deep = new THREE.Color('#2d7a2e');
-  const mid = new THREE.Color('#4f9e3a');
-  const light = new THREE.Color('#8fcf5a');
+  const deep = new THREE.Color('#237a26');
+  const mid = new THREE.Color('#3f9e33');
+  const light = new THREE.Color('#86cf52');
   const tmp = new THREE.Color();
   const tint = rand() * 0.25;
   for (let j = 0; j <= V; j++) {
@@ -444,7 +444,7 @@ export function buildModel(opts: { shadows: boolean }): Model {
   const plate = part('platform', 1.72, PLATE_Y0 + 0.04, 1.29);
   {
     const g = plate.group;
-    const m = plastic('#22634a');
+    const m = plastic('#1b7d52');
     const RP = 1.27;
     const FIN_PHI = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4];
 
@@ -524,7 +524,7 @@ export function buildModel(opts: { shadows: boolean }): Model {
   {
     const g = pot.group;
     const clay = track(new THREE.MeshStandardMaterial({
-      color: '#ffffff', map: track(noiseTexture('#c76c43', 14, [120, 60, 30])), roughness: 0.9, metalness: 0,
+      color: '#ffffff', map: track(noiseTexture('#e2581f', 10, [150, 55, 20])), roughness: 0.72, metalness: 0,
     }));
     clay.map!.repeat.set(5, 2);
     const H = POT_H;

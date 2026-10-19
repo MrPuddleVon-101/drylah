@@ -68,7 +68,6 @@ function Card({ m, i }: { m: (typeof team)[number]; i: number }) {
       })()}
       <div className="member-meta">
         <h3 className="member-name"><span>{first}</span> <span>{rest.join(' ')}</span></h3>
-        <p className="member-role">{m.role}</p>
       </div>
     </li>
   );

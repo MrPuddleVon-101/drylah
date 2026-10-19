@@ -244,7 +244,7 @@ export const gradeShader = {
       c.rgb *= mix(1.0, v, uVignette);
       // lift shadows toward the brand's deep green
       float l = dot(c.rgb, vec3(0.299, 0.587, 0.114));
-      c.rgb += vec3(0.004, 0.016, 0.010) * (1.0 - smoothstep(0.0, 0.25, l));
+      c.rgb += vec3(0.001, 0.004, 0.002) * (1.0 - smoothstep(0.0, 0.25, l));
       c.rgb += (hash(vUv * 1000.0 + fract(uTime)) - 0.5) * uGrain;
       gl_FragColor = c;
     }

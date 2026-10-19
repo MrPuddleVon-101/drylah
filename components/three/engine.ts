@@ -86,12 +86,12 @@ function storyLook(p: number, narrow: boolean): Look {
   const cut = ramp(p, [[STORY.flowIn[0] + 0.02, 0], [STORY.flowIn[1] + 0.02, 1]]);
   const comp = narrow
     ? ramp(p, [[0, 0], [1, 0]])
-    : ramp(p, [[0, 0.47], [STORY.heroOut, 0.47], [STORY.explode[1], 0], [STORY.labels[1], 0], [STORY.flowIn[1], -0.4], [1, -0.4]]);
+    : ramp(p, [[0, 0.38], [STORY.heroOut, 0.38], [STORY.explode[1], 0], [STORY.labels[1], 0], [STORY.flowIn[1], -0.4], [1, -0.4]]);
   const compY = narrow
     ? ramp(p, [[0, 0.5], [STORY.heroOut, 0.5], [STORY.explode[1], 0.2], [STORY.labels[1], 0.2], [STORY.flowIn[1], 0.36]])
-    : ramp(p, [[0, 0.08], [STORY.heroOut, 0.08], [STORY.explode[1], 0.02], [STORY.labels[1], 0.02], [STORY.flowIn[1], 0.1]]);
-  const fitH = ramp(p, [[0, 3.4], [STORY.heroOut, 3.4], [STORY.explode[1], 7.4], [STORY.labels[1], 7.4], [STORY.flowIn[1], 3.25]]);
-  const fitW = narrow ? ramp(p, [[0, 0.62], [STORY.heroOut, 0.62], [STORY.explode[1], 0.95], [STORY.labels[1], 0.95], [STORY.flowIn[1], 0.62]]) : ramp(p, [[0, 0.4], [STORY.heroOut, 0.4], [STORY.explode[1], 0.34], [STORY.labels[1], 0.34], [STORY.flowIn[1], 0.46]]);
+    : ramp(p, [[0, -0.01], [STORY.heroOut, -0.01], [STORY.explode[1], 0.02], [STORY.labels[1], 0.02], [STORY.flowIn[1], 0.1]]);
+  const fitH = ramp(p, [[0, 4.7], [STORY.heroOut, 4.7], [STORY.explode[1], 7.4], [STORY.labels[1], 7.4], [STORY.flowIn[1], 3.25]]);
+  const fitW = narrow ? ramp(p, [[0, 0.62], [STORY.heroOut, 0.62], [STORY.explode[1], 0.95], [STORY.labels[1], 0.95], [STORY.flowIn[1], 0.62]]) : ramp(p, [[0, 0.38], [STORY.heroOut, 0.38], [STORY.explode[1], 0.34], [STORY.labels[1], 0.34], [STORY.flowIn[1], 0.46]]);
   const pitch = ramp(p, [[0, 0.3], [STORY.explode[1], 0.2], [STORY.labels[1], 0.24], [STORY.flowIn[1], 0.1]]);
   const spin = ramp(p, [[0, 1], [STORY.explode[0], 1], [STORY.explode[1], 0.25], [STORY.labels[1], 0.25], [STORY.flowIn[0], 0]]);
   const li = (p - STORY.labels[0]) / ((STORY.labels[1] - STORY.labels[0]) / 5);
@@ -155,12 +155,12 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, Q.dpr));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 1.12;
   renderer.shadowMap.enabled = Q.shadows;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.localClippingEnabled = true;
 
-  const FOG = new THREE.Color('#030805');
+  const FOG = new THREE.Color('#010201');
   const scene = new THREE.Scene();
   scene.background = FOG.clone();
   scene.fog = new THREE.FogExp2(FOG, 0.035);
@@ -168,12 +168,12 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   const pmrem = new THREE.PMREMGenerator(renderer);
   const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environment = env;
-  scene.environmentIntensity = 0.55;
+  scene.environmentIntensity = 0.7;
 
   const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 120);
 
   /* lights */
-  const key = new THREE.DirectionalLight('#fff4e2', 2.4);
+  const key = new THREE.DirectionalLight('#fff4e2', 3.2);
   key.position.set(-3.5, 6, 4);
   key.castShadow = Q.shadows;
   key.shadow.mapSize.set(2048, 2048);
@@ -189,7 +189,11 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   const rim2 = new THREE.DirectionalLight('#5fd4e0', 1.1);
   rim2.position.set(-5, 1, -3);
   scene.add(rim2);
-  scene.add(new THREE.HemisphereLight('#cfe9d8', '#0a120d', 0.35));
+  scene.add(new THREE.HemisphereLight('#e6f4ea', '#0a120d', 0.45));
+  // soft front fill so the product reads bright against the dark stage
+  const fill = new THREE.DirectionalLight('#ffffff', 0.75);
+  fill.position.set(1.5, 2, 7);
+  scene.add(fill);
 
   /* model */
   const model = buildModel({ shadows: Q.shadows });
@@ -214,7 +218,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   const FLOOR_Y = -1.55;
   const floorMat = new THREE.ShaderMaterial({
     vertexShader: basicVert, fragmentShader: floorFrag,
-    uniforms: { uColor: { value: new THREE.Color('#7fd86b') }, uOpacity: { value: 0.36 }, uFocus: { value: new THREE.Vector3() } },
+    uniforms: { uColor: { value: new THREE.Color('#7fd86b') }, uOpacity: { value: 0.24 }, uFocus: { value: new THREE.Vector3() } },
     transparent: true, depthWrite: false, fog: false,
   });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), floorMat);
