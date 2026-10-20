@@ -32,9 +32,11 @@ export function SmoothScroll() {
         // Exponential follow rather than a fixed duration. A long duration
         // reads as lag, not as weight; the length of the journey comes from
         // the length of the sections instead.
-        lerp: 0.09,
-        wheelMultiplier: 0.9,
-        touchMultiplier: 1.4,
+        // slower, weightier scroll across the whole page, matching the pace
+        // of the 3D story section
+        lerp: 0.075,
+        wheelMultiplier: 0.55,
+        touchMultiplier: 0.9,
         syncTouch: false,
         anchors: { offset: -72 },
       });
@@ -65,15 +67,15 @@ export function SmoothScroll() {
         // The mobile menu locks the page; do not scroll behind it.
         if (document.body.style.overflow === 'hidden') return;
 
-        const page = window.innerHeight * 0.88;
+        const page = window.innerHeight * 0.6;
         let to: number | null = null;
 
         switch (e.key) {
           case 'PageDown':   to = instance.targetScroll + page; break;
           case 'PageUp':     to = instance.targetScroll - page; break;
           case ' ':          to = instance.targetScroll + (e.shiftKey ? -page : page); break;
-          case 'ArrowDown':  to = instance.targetScroll + 140; break;
-          case 'ArrowUp':    to = instance.targetScroll - 140; break;
+          case 'ArrowDown':  to = instance.targetScroll + 90; break;
+          case 'ArrowUp':    to = instance.targetScroll - 90; break;
           case 'Home':       to = 0; break;
           case 'End':        to = instance.limit; break;
           default: return;
