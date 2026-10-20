@@ -531,10 +531,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 
 .hero {
   position: absolute;
-  left: var(--gutter);
+  /* pulled in toward the centre so copy and model read as one group */
+  left: max(var(--gutter), calc(50% - min(480px, 38vw)));
   top: 50%;
   translate: 0 -46%;
-  width: min(640px, 42vw);
+  width: min(560px, 40vw);
   z-index: 3;
   will-change: transform, opacity;
 }

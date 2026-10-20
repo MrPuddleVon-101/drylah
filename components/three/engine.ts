@@ -81,7 +81,7 @@ function storyLook(p: number, narrow: boolean): Look {
   const cut = ramp(p, [[STORY.flowIn[0] + 0.02, 0], [STORY.flowIn[1] + 0.02, 1]]);
   const comp = narrow
     ? ramp(p, [[0, 0], [1, 0]])
-    : ramp(p, [[0, 0.38], [STORY.heroOut, 0.38], [STORY.explode[1], 0], [STORY.labels[1], 0], [STORY.flowIn[1], -0.4], [1, -0.4]]);
+    : ramp(p, [[0, 0.33], [STORY.heroOut, 0.33], [STORY.explode[1], 0], [STORY.labels[1], 0], [STORY.flowIn[1], -0.4], [1, -0.4]]);
   const compY = narrow
     ? ramp(p, [[0, 0.5], [STORY.heroOut, 0.5], [STORY.explode[1], 0.2], [STORY.labels[1], 0.2], [STORY.flowIn[1], 0.36]])
     : ramp(p, [[0, -0.01], [STORY.heroOut, -0.01], [STORY.explode[1], 0.02], [STORY.labels[1], 0.02], [STORY.flowIn[1], 0.1]]);
