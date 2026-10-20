@@ -123,7 +123,7 @@ export const floorFrag = /* glsl */ `
     float fade = exp(-d * 0.16);
     float a = max(minor, major) * fade;
     // soft contact glow right under the product
-    float halo = exp(-d * d * 0.55) * 0.22;
+    float halo = exp(-d * d * 0.55) * 0.06;
     gl_FragColor = vec4(uColor, (a * 0.55 + halo) * uOpacity);
   }
 `;
@@ -223,8 +223,8 @@ export const gradeShader = {
   uniforms: {
     tDiffuse: { value: null },
     uTime: { value: 0 },
-    uVignette: { value: 0.9 },
-    uGrain: { value: 0.035 },
+    uVignette: { value: 0.55 },
+    uGrain: { value: 0.012 },
   },
   vertexShader: /* glsl */ `
     varying vec2 vUv;

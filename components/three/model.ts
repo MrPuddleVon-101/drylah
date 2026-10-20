@@ -56,10 +56,10 @@ const WALL = 0.07;
 const TRAY_TOP = 0.45;
 const WATER_Y = 0.14;
 const INNER_R = 0.95;
-const DISH_Y = [0.12, 0.42];
-const MESH_Y = 0.465;
-const PLATE_Y0 = 0.48;
-const PLATE_Y1 = 0.54;
+const DISH_Y = [0.12, 0.395];
+const MESH_Y = 0.42;  // sits inside the tray rim, hidden when assembled
+const PLATE_Y0 = 0.45;  // seated on the tray lip, no gap
+const PLATE_Y1 = 0.51;
 const FIN_H = 0.17;
 const POT_Y = PLATE_Y1 + FIN_H;
 const POT_H = 1.3;
@@ -69,7 +69,7 @@ const WINDOW_HW = 0.27;
 const WINDOW_Y = [0.12, 0.32];
 const WICK_Y = [0.06, 1.75];
 
-const GREEN = '#17704a';
+const GREEN = '#1d5c40';
 const ARROW = '#5cc8ff';
 
 /* ---------------------------------------------------------------- helpers */
@@ -131,30 +131,6 @@ function lineSet(points: number[], mat: THREE.LineBasicMaterial) {
   return l;
 }
 
-function noiseTexture(base: string, spread: number, fleck: [number, number, number], size = 256) {
-  const c = document.createElement('canvas');
-  c.width = c.height = size;
-  const ctx = c.getContext('2d')!;
-  ctx.fillStyle = base;
-  ctx.fillRect(0, 0, size, size);
-  const img = ctx.getImageData(0, 0, size, size);
-  for (let i = 0; i < img.data.length; i += 4) {
-    const n = (Math.random() - 0.5) * spread;
-    img.data[i] += n;
-    img.data[i + 1] += n * 0.8;
-    img.data[i + 2] += n * 0.6;
-  }
-  ctx.putImageData(img, 0, 0);
-  for (let i = 0; i < 260; i++) {
-    ctx.fillStyle = `rgba(${fleck[0]},${fleck[1]},${fleck[2]},${Math.random() * 0.35})`;
-    ctx.fillRect(Math.random() * size, Math.random() * size, 1 + Math.random() * 2, 1 + Math.random() * 2);
-  }
-  const t = new THREE.CanvasTexture(c);
-  t.colorSpace = THREE.SRGBColorSpace;
-  t.wrapS = t.wrapT = THREE.RepeatWrapping;
-  return t;
-}
-
 function screenMaterial(scale: [number, number], color: string) {
   return new THREE.ShaderMaterial({
     vertexShader: basicVert,
@@ -206,26 +182,140 @@ function pebbleGeometry(seed: number) {
   return g;
 }
 
-/** Pothos leaf: heart base, long pointed tip, folded along the midrib. */
-function leafGeometry(rand: () => number) {
-  const U = 10, V = 18;
+function canvas(size: number) {
+  const c = document.createElement('canvas');
+  c.width = c.height = size;
+  return [c, c.getContext('2d')!] as const;
+}
+
+function toTexture(c: HTMLCanvasElement, srgb = true) {
+  const t = new THREE.CanvasTexture(c);
+  if (srgb) t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.anisotropy = 8;
+  return t;
+}
+
+/**
+ * Golden-pothos leaf face: deep green blade, a pale midrib, curved lateral
+ * veins and the yellow marbling that makes the plant read as real.
+ */
+function leafTexture(seed: number) {
+  const rand = rng(seed);
+  const S = 512;
+  const [c, ctx] = canvas(S);
+  const g = ctx.createLinearGradient(0, S, 0, 0);
+  g.addColorStop(0, '#2c7a2b');
+  g.addColorStop(0.55, '#33862f');
+  g.addColorStop(1, '#2a7428');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, S, S);
+  // marbling: soft yellow-green streaks fanning out from the midrib
+  ctx.filter = 'blur(7px)';
+  for (let k = 0; k < 46; k++) {
+    const y0 = S * (0.15 + rand() * 0.8);
+    const side = rand() < 0.5 ? -1 : 1;
+    const len = 60 + rand() * 170;
+    ctx.strokeStyle = `rgba(${195 + rand() * 30}, ${205 + rand() * 25}, ${80 + rand() * 40}, ${0.12 + rand() * 0.26})`;
+    ctx.lineWidth = 3 + rand() * 13;
+    ctx.beginPath();
+    ctx.moveTo(S / 2 + side * rand() * 12, y0);
+    ctx.quadraticCurveTo(S / 2 + side * len * 0.5, y0 - 20 - rand() * 30, S / 2 + side * len, y0 - 40 - rand() * 60);
+    ctx.stroke();
+  }
+  ctx.filter = 'none';
+  // lateral veins
+  ctx.strokeStyle = 'rgba(170, 220, 120, 0.32)';
+  ctx.lineWidth = 2;
+  for (let y = S * 0.88; y > S * 0.1; y -= 34 + rand() * 10) {
+    for (const side of [-1, 1]) {
+      ctx.beginPath();
+      ctx.moveTo(S / 2, y);
+      ctx.quadraticCurveTo(S / 2 + side * 90, y - 26, S / 2 + side * 240, y - 110);
+      ctx.stroke();
+    }
+  }
+  // midrib, tapering toward the tip
+  for (let y = S; y > 0; y -= 2) {
+    const t = 1 - y / S;
+    ctx.fillStyle = 'rgba(196, 230, 140, 0.85)';
+    ctx.fillRect(S / 2 - (4 - t * 3.2), y, (4 - t * 3.2) * 2, 2);
+  }
+  return toTexture(c);
+}
+
+function clayTextures() {
+  const S = 1024;
+  const [c, ctx] = canvas(S);
+  const [b, bx] = canvas(S);
+  ctx.fillStyle = '#cf6a3e';
+  ctx.fillRect(0, 0, S, S);
+  bx.fillStyle = '#808080';
+  bx.fillRect(0, 0, S, S);
+  const img = ctx.getImageData(0, 0, S, S);
+  const bimg = bx.getImageData(0, 0, S, S);
+  for (let i = 0; i < img.data.length; i += 4) {
+    const n = (Math.random() - 0.5) * 16;
+    img.data[i] += n; img.data[i + 1] += n * 0.75; img.data[i + 2] += n * 0.55;
+    const bn = 128 + (Math.random() - 0.5) * 70;
+    bimg.data[i] = bimg.data[i + 1] = bimg.data[i + 2] = bn;
+  }
+  ctx.putImageData(img, 0, 0);
+  bx.putImageData(bimg, 0, 0);
+  // fired-clay speckle: pale grog and dark iron flecks, pitted in the bump map
+  for (let i = 0; i < 3200; i++) {
+    const x = Math.random() * S, y = Math.random() * S, r = 0.4 + Math.random() * 1.0;
+    const dark = Math.random() < 0.55;
+    ctx.fillStyle = dark ? `rgba(120, 55, 28, ${0.15 + Math.random() * 0.25})` : `rgba(235, 170, 130, ${0.1 + Math.random() * 0.2})`;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+    bx.fillStyle = dark ? '#3a3a3a' : '#b0b0b0';
+    bx.beginPath(); bx.arc(x, y, r, 0, Math.PI * 2); bx.fill();
+  }
+  return { map: toTexture(c), bump: toTexture(b, false) };
+}
+
+function soilTexture() {
+  const S = 512;
+  const [c, ctx] = canvas(S);
+  ctx.fillStyle = '#24170f';
+  ctx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 9000; i++) {
+    const v = Math.random();
+    ctx.fillStyle = v < 0.5 ? `rgba(15, 9, 5, ${0.5 + Math.random() * 0.4})` : `rgba(${70 + Math.random() * 40}, ${45 + Math.random() * 25}, ${28 + Math.random() * 15}, ${0.4 + Math.random() * 0.4})`;
+    const r = 0.8 + Math.random() * 2.6;
+    ctx.fillRect(Math.random() * S, Math.random() * S, r, r);
+  }
+  return toTexture(c);
+}
+
+/** Expanded-clay pebble surface: porous, with dark pits. */
+function pebbleTexture() {
+  const S = 256;
+  const [c, ctx] = canvas(S);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, S, S);
+  for (let i = 0; i < 900; i++) {
+    const r = 0.5 + Math.random() * 1.8;
+    ctx.fillStyle = `rgba(60, 50, 40, ${0.15 + Math.random() * 0.45})`;
+    ctx.beginPath(); ctx.arc(Math.random() * S, Math.random() * S, r, 0, Math.PI * 2); ctx.fill();
+  }
+  return toTexture(c);
+}
+
+/** Pothos leaf geometry: rounded heart base, long pointed tip, cupped and arched. */
+function leafGeometry() {
+  const U = 12, V = 22;
   const pos: number[] = [];
-  const col: number[] = [];
+  const uv: number[] = [];
   const idx: number[] = [];
-  const deep = new THREE.Color('#237a26');
-  const mid = new THREE.Color('#3f9e33');
-  const light = new THREE.Color('#86cf52');
-  const tmp = new THREE.Color();
-  const tint = rand() * 0.25;
   for (let j = 0; j <= V; j++) {
     const v = j / V;
-    const w = 0.5 * Math.pow(Math.sin(Math.PI * Math.min(1, 0.04 + v * 0.96)), 0.7) * (1.12 - 0.62 * v);
+    const w = 0.56 * Math.pow(Math.sin(Math.PI * (0.13 + 0.87 * v)), 0.62) * (1.06 - 0.56 * v);
     for (let i = 0; i <= U; i++) {
       const u = (i / U) * 2 - 1;
-      pos.push(u * w, v - 0.06, Math.abs(u) * w * 0.42 - v * v * 0.32 - u * u * 0.04);
-      const rib = Math.max(0, 1 - Math.abs(u) * 6);
-      tmp.copy(deep).lerp(mid, 0.4 + tint + (1 - Math.abs(u)) * 0.25).lerp(light, rib * 0.55 + (1 - v) * 0.1);
-      col.push(tmp.r, tmp.g, tmp.b);
+      const notch = 0.06 * Math.pow(1 - Math.abs(u), 2) * Math.pow(1 - v, 6);
+      pos.push(u * w, v - 0.04 + notch, Math.abs(u) * w * 0.3 - v * v * 0.26 + u * u * w * 0.08);
+      uv.push(0.5 + (u * w) / 1.2, v);
     }
   }
   for (let j = 0; j < V; j++) {
@@ -236,7 +326,7 @@ function leafGeometry(rand: () => number) {
   }
   const g = new THREE.BufferGeometry();
   g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
-  g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
   g.setIndex(idx);
   g.computeVertexNormals();
   return g;
@@ -255,7 +345,7 @@ export function buildModel(opts: { shadows: boolean }): Model {
   const lines = clip(track(new THREE.LineBasicMaterial({ color: '#c8f57e', transparent: true, opacity: 0.18, depthWrite: false })));
 
   const plastic = (color = GREEN) => clip(track(new THREE.MeshPhysicalMaterial({
-    color, roughness: 0.52, metalness: 0, clearcoat: 0.3, clearcoatRoughness: 0.4, side: THREE.DoubleSide,
+    color, roughness: 0.62, metalness: 0, clearcoat: 0.08, clearcoatRoughness: 0.6, side: THREE.DoubleSide,
   })));
 
   const mesh = (g: THREE.BufferGeometry, m: THREE.Material, cast = true) => {
@@ -299,7 +389,7 @@ export function buildModel(opts: { shadows: boolean }): Model {
       }
       const h = WINDOW_Y[1] - WINDOW_Y[0];
       const arc = (R - 0.035) * WINDOW_HW * 2;
-      const sm = clip(track(screenMaterial([arc * 70, h * 70], '#c9cec7')));
+      const sm = clip(track(screenMaterial([arc * 70, h * 70], '#8e958d')));
       const geo = track(new THREE.CylinderGeometry(R - 0.035, R - 0.035, h, 24, 1, true, Math.PI / 2 - (p + WINDOW_HW), WINDOW_HW * 2));
       const sc = new THREE.Mesh(geo, sm);
       sc.position.y = (WINDOW_Y[0] + WINDOW_Y[1]) / 2;
@@ -400,7 +490,9 @@ export function buildModel(opts: { shadows: boolean }): Model {
         }
       }
     }
-    const stone = track(new THREE.MeshStandardMaterial({ roughness: 0.9, metalness: 0 }));
+    const pebMap = track(pebbleTexture());
+    pebMap.repeat.set(2, 2);
+    const stone = track(new THREE.MeshStandardMaterial({ roughness: 0.96, metalness: 0, map: pebMap, bumpMap: pebMap, bumpScale: 1.2 }));
     const halves = [balls.filter((_, i) => i % 2 === 0), balls.filter((_, i) => i % 2 === 1)];
     halves.forEach((set, hi) => {
       const geo = track(pebbleGeometry(hi ? 11 : 3));
@@ -444,7 +536,7 @@ export function buildModel(opts: { shadows: boolean }): Model {
   const plate = part('platform', 1.72, PLATE_Y0 + 0.04, 1.29);
   {
     const g = plate.group;
-    const m = plastic('#1b7d52');
+    const m = plastic('#21664a');
     const RP = 1.27;
     const FIN_PHI = [Math.PI / 4, (3 * Math.PI) / 4, (5 * Math.PI) / 4, (7 * Math.PI) / 4];
 
@@ -523,21 +615,25 @@ export function buildModel(opts: { shadows: boolean }): Model {
   const pot = part('pot', 2.65, POT_Y + 0.5, 1.12);
   {
     const g = pot.group;
-    const clay = track(new THREE.MeshStandardMaterial({
-      color: '#ffffff', map: track(noiseTexture('#e2581f', 10, [150, 55, 20])), roughness: 0.72, metalness: 0,
-    }));
-    clay.map!.repeat.set(5, 2);
+    const tex = clayTextures();
+    track(tex.map); track(tex.bump);
+    tex.map.repeat.set(3, 1.4);
+    tex.bump.repeat.set(3, 1.4);
+    const clay = track(new THREE.MeshStandardMaterial({ map: tex.map, bumpMap: tex.bump, bumpScale: 0.6, roughness: 0.92, metalness: 0 }));
     const H = POT_H;
     const prof = [
-      [0.11, 0], [0.68, 0], [0.715, 0.03], [1.02, H * 0.79], [1.1, H * 0.8], [1.118, H * 0.82],
-      [1.135, H * 0.985], [1.12, H], [1.04, H], [1.02, H * 0.98], [0.975, H * 0.82], [0.66, 0.08], [0.11, 0.08], [0.11, 0],
+      [0.11, 0], [0.64, 0], [0.68, 0.012], [0.69, 0.04], [0.715, 0.05],          // foot ring
+      [1.02, H * 0.785], [1.035, H * 0.795], [1.1, H * 0.802], [1.12, H * 0.82],    // under-rim step
+      [1.13, H * 0.9], [1.135, H * 0.975], [1.125, H * 0.995], [1.105, H],          // rolled rim band
+      [1.04, H], [1.02, H * 0.985], [0.98, H * 0.82], [0.66, 0.085], [0.11, 0.085], [0.11, 0],
     ].map(([x, y]) => new THREE.Vector2(x, y));
-    const potMesh = mesh(new THREE.LatheGeometry(prof, 128), clay);
+    const potMesh = mesh(new THREE.LatheGeometry(prof, 160), clay);
     potMesh.position.y = POT_Y;
     g.add(potMesh);
 
-    const soil = track(new THREE.MeshStandardMaterial({ color: '#ffffff', map: track(noiseTexture('#2b1d14', 46, [230, 225, 210])), roughness: 1 }));
-    soil.map!.repeat.set(3, 3);
+    const soilMap = track(soilTexture());
+    soilMap.repeat.set(2, 2);
+    const soil = track(new THREE.MeshStandardMaterial({ map: soilMap, bumpMap: soilMap, bumpScale: 1.5, roughness: 1 }));
     const sg = track(new THREE.CircleGeometry(1.0, 96));
     sg.rotateX(-Math.PI / 2);
     const soilMesh = new THREE.Mesh(sg, soil);
@@ -545,32 +641,64 @@ export function buildModel(opts: { shadows: boolean }): Model {
     soilMesh.receiveShadow = opts.shadows;
     g.add(soilMesh);
 
-    // a full pothos: long stems fountaining out, leaves pointing outward
+    // soil detail: dark crumbs and white perlite, like real potting mix
     const rand = rng(42);
-    const leafMat = track(new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.48, side: THREE.DoubleSide }));
-    const stemMat = track(new THREE.MeshStandardMaterial({ color: '#4c8f3a', roughness: 0.6 }));
+    const scatter = (count: number, color: string, s0: number, s1: number, rough: number) => {
+      const geo = track(new THREE.IcosahedronGeometry(1, 0));
+      const mat = track(new THREE.MeshStandardMaterial({ color, roughness: rough, flatShading: true }));
+      const inst = new THREE.InstancedMesh(geo, mat, count);
+      const m4 = new THREE.Matrix4();
+      for (let i = 0; i < count; i++) {
+        const r = Math.sqrt(rand()) * 0.94;
+        const a = rand() * Math.PI * 2;
+        const sc = s0 + rand() * (s1 - s0);
+        m4.compose(
+          new THREE.Vector3(Math.cos(a) * r, SOIL_Y + sc * 0.3, Math.sin(a) * r),
+          new THREE.Quaternion().setFromEuler(new THREE.Euler(rand() * 3, rand() * 3, rand() * 3)),
+          new THREE.Vector3(sc, sc * 0.7, sc * (0.8 + rand() * 0.4)),
+        );
+        inst.setMatrixAt(i, m4);
+      }
+      inst.receiveShadow = opts.shadows;
+      g.add(inst);
+      disposables.push({ dispose: () => inst.dispose() });
+    };
+    scatter(220, '#2e1d12', 0.014, 0.032, 1);
+    scatter(34, '#e9e6de', 0.009, 0.018, 0.95);
+
+    // golden pothos: broad marbled leaves on long petioles, fountaining out
+    const leafMats = [3, 9, 17].map((seed) => {
+      const t = track(leafTexture(seed));
+      return track(new THREE.MeshPhysicalMaterial({
+        map: t, roughness: 0.52, clearcoat: 0.12, clearcoatRoughness: 0.5, side: THREE.DoubleSide,
+        bumpMap: t, bumpScale: 0.4,
+      }));
+    });
+    const stemMat = track(new THREE.MeshStandardMaterial({ color: '#5d9c3e', roughness: 0.55 }));
+    const leafGeo = track(leafGeometry());
     const up = new THREE.Vector3(0, 1, 0);
-    const N = 19;
+    const N = 13;
     for (let i = 0; i < N; i++) {
-      const phi = i * 2.39996 + rand() * 0.3;
+      const phi = i * 2.39996 + rand() * 0.35;
       const out = new THREE.Vector3(Math.cos(phi), 0, Math.sin(phi));
       const t = i / (N - 1);
-      const reach = 0.25 + t * 0.85 + rand() * 0.1;
-      const height = 1.0 - t * 0.75 + rand() * 0.12;
-      const s0 = out.clone().multiplyScalar(0.06 + rand() * 0.1).setY(SOIL_Y);
+      const reach = 0.18 + t * 0.62 + rand() * 0.08;
+      const height = 1.05 - t * 0.6 + rand() * 0.1;
+      const s0 = out.clone().multiplyScalar(0.05 + rand() * 0.08).setY(SOIL_Y);
       const tip = out.clone().multiplyScalar(reach).setY(SOIL_Y + height);
-      const ctrl = s0.clone().lerp(tip, 0.25).setY(SOIL_Y + height * 1.05 + 0.1);
-      g.add(mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(s0, ctrl, tip), 20, 0.014, 6, false), stemMat));
+      const ctrl = s0.clone().lerp(tip, 0.2).setY(SOIL_Y + height * 0.95);
+      g.add(mesh(new THREE.TubeGeometry(new THREE.QuadraticBezierCurve3(s0, ctrl, tip), 24, 0.019, 8, false), stemMat));
 
-      const elev = 0.55 - t * 0.85 + (rand() - 0.5) * 0.2;
+      const elev = 0.85 - t * 1.05 + (rand() - 0.5) * 0.25;
       const dir = out.clone().multiplyScalar(Math.cos(elev)).addScaledVector(up, Math.sin(elev)).normalize();
       const z = up.clone().addScaledVector(dir, -up.dot(dir)).normalize();
       const x = new THREE.Vector3().crossVectors(dir, z).normalize();
-      const leaf = mesh(leafGeometry(rand), leafMat);
-      const size = 0.5 + rand() * 0.2;
+      const q = new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4().makeBasis(x, dir, z));
+      q.premultiply(new THREE.Quaternion().setFromAxisAngle(dir, (rand() - 0.5) * 0.9));
+      const leaf = mesh(leafGeo, leafMats[i % 3]);
+      const size = 0.74 + rand() * 0.24;
       leaf.matrixAutoUpdate = false;
-      const rot = new THREE.Matrix4().makeBasis(x, dir, z);
-      leaf.matrix.compose(tip, new THREE.Quaternion().setFromRotationMatrix(rot), new THREE.Vector3(size, size, size));
+      leaf.matrix.compose(tip, q, new THREE.Vector3(size, size, size));
       g.add(leaf);
     }
   }

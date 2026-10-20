@@ -154,8 +154,9 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, Q.dpr));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.12;
+  // Khronos neutral: keeps product colours true instead of greying them out
+  renderer.toneMapping = THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = 1.0;
   renderer.shadowMap.enabled = Q.shadows;
   renderer.shadowMap.type = THREE.PCFShadowMap;
   renderer.localClippingEnabled = true;
@@ -168,12 +169,12 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   const pmrem = new THREE.PMREMGenerator(renderer);
   const env = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
   scene.environment = env;
-  scene.environmentIntensity = 0.7;
+  scene.environmentIntensity = 0.55;
 
   const camera = new THREE.PerspectiveCamera(28, 1, 0.1, 120);
 
   /* lights */
-  const key = new THREE.DirectionalLight('#fff4e2', 3.2);
+  const key = new THREE.DirectionalLight('#fff8ef', 2.7);
   key.position.set(-3.5, 6, 4);
   key.castShadow = Q.shadows;
   key.shadow.mapSize.set(2048, 2048);
@@ -183,15 +184,15 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   key.shadow.bias = -0.0004;
   key.shadow.normalBias = 0.02;
   scene.add(key);
-  const rim = new THREE.DirectionalLight('#9be86a', 2.2);
+  const rim = new THREE.DirectionalLight('#eef6ff', 1.6);
   rim.position.set(4, 2.5, -5);
   scene.add(rim);
-  const rim2 = new THREE.DirectionalLight('#5fd4e0', 1.1);
+  const rim2 = new THREE.DirectionalLight('#ffffff', 0.5);
   rim2.position.set(-5, 1, -3);
   scene.add(rim2);
   scene.add(new THREE.HemisphereLight('#e6f4ea', '#0a120d', 0.45));
   // soft front fill so the product reads bright against the dark stage
-  const fill = new THREE.DirectionalLight('#ffffff', 0.75);
+  const fill = new THREE.DirectionalLight('#ffffff', 0.9);
   fill.position.set(1.5, 2, 7);
   scene.add(fill);
 
@@ -258,9 +259,10 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   scene.add(motes);
 
   /* post */
-  const composer = new EffectComposer(renderer);
+  // multisampled target: post-processing otherwise drops antialiasing and edges go jagged
+  const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType }));
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.36, 0.5, 0.9);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.14, 0.35, 0.96);
   if (Q.bloom) composer.addPass(bloom);
   const grade = new ShaderPass(gradeShader);
   composer.addPass(grade);
@@ -372,7 +374,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
       }
     }
     model.root.position.y = -THREE.MathUtils.lerp(1.4, 2.55, cur.explode);
-    model.lines.opacity = 0.14 + cur.explode * 0.1;
+    model.lines.visible = false;
 
     // highlight for the water-path steps
     const all = cur.flowStep >= 4;
@@ -381,7 +383,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
 
     for (const s of model.screens) {
       const g = cur.focus === 1 || cur.focus === 4 ? 0.6 : flowVis * (cur.flowStep === 1 ? 0.9 : 0.15);
-      s.uniforms.uGlow.value = damp(s.uniforms.uGlow.value, g, 6, dt);
+      s.uniforms.uGlow.value = damp(s.uniforms.uGlow.value, g * 0.25, 6, dt);
     }
 
     model.water.uniforms.uTime.value = time;
