@@ -36,7 +36,8 @@ export function Stage() {
   const revealRef = useRef<HTMLDivElement>(null);
   const flowRef = useRef<HTMLDivElement>(null);
   const hudRef = useRef<HTMLDivElement>(null);
-  const cueRef = useRef<HTMLDivElement>(null);
+  const cueRef = useRef<HTMLButtonElement>(null);
+  const wordRef = useRef<HTMLDivElement>(null);
   const labelRefs = useRef<(HTMLDivElement | null)[]>([]);
   const lineRefs = useRef<(SVGPathElement | null)[]>([]);
   const dotRefs = useRef<(HTMLSpanElement | null)[]>([]);
@@ -79,7 +80,16 @@ export function Stage() {
       heroRef.current.style.transform = `translate3d(0, ${(1 - h) * -60}px, 0)`;
       heroRef.current.style.visibility = h <= 0.001 ? 'hidden' : 'visible';
     }
-    if (cueRef.current) cueRef.current.style.opacity = String(1 - span(p, 0.0, 0.05));
+    if (cueRef.current) {
+      const c = 1 - span(p, 0.0, 0.05);
+      cueRef.current.style.opacity = String(c);
+      cueRef.current.style.visibility = c <= 0.001 ? 'hidden' : 'visible';
+    }
+    // giant backdrop wordmark drifts sideways and fades as the model opens
+    if (wordRef.current) {
+      wordRef.current.style.transform = `translate3d(${-p * 60}vw, 0, 0)`;
+      wordRef.current.style.opacity = String(1 - span(p, 0.02, 0.16));
+    }
 
     // "A different base" heading during the exploded view
     const rv = span(p, S.explode[0] + 0.01, S.explode[1] - 0.02) * (1 - span(p, S.labels[0] - 0.01, S.labels[0] + 0.025));
@@ -262,6 +272,7 @@ export function Stage() {
       <Intro ready={ready} onWipe={onWipe} />
       <section className="stage" ref={stageRef} data-live={live} data-failed={failed} aria-label="DryLah! product">
         <div className="stage-sticky">
+          <div className="stage-word" ref={wordRef} aria-hidden><span>Dry</span><span>Lah!</span></div>
           <canvas ref={canvasRef} className="stage-canvas" aria-hidden />
           {failed && (
             <div className="stage-fallback">
@@ -291,7 +302,6 @@ export function Stage() {
               <Btn cursor="Open it" onClick={explore}>{hero.primary}</Btn>
               <Btn href="/order/" variant="ghost" cursor="Pilot">{hero.secondary}</Btn>
             </div>
-            <p className="hero-note"><Status s="validate" label="Concept under testing" /></p>
           </div>
 
           {/* exploded view heading */}
@@ -364,11 +374,16 @@ export function Stage() {
               <span className="motion-ico" data-on={motion} aria-hidden><i /><i /></span>
               {motion ? 'Pause motion' : 'Play motion'}
             </button>
-            <div className="scroll-cue" ref={cueRef} aria-hidden>
-              <span>Scroll to open it up</span>
-              <i />
-            </div>
           </div>
+          <button type="button" className="scroll-cue" ref={cueRef} onClick={explore} aria-label="Scroll to open it up" data-magnetic>
+            <svg className="scroll-cue-ring" viewBox="0 0 120 120" aria-hidden>
+              <defs><path id="cue-circle" d="M60,60 m-46,0 a46,46 0 1,1 92,0 a46,46 0 1,1 -92,0" /></defs>
+              <text><textPath href="#cue-circle" textLength="288" lengthAdjust="spacing">SCROLL TO OPEN IT UP • SCROLL TO OPEN IT UP • </textPath></text>
+            </svg>
+            <span className="scroll-cue-core" aria-hidden>
+              <svg viewBox="0 0 24 24"><path d="M12 4 V19 M5 12 L12 19 L19 12" fill="none" stroke="currentColor" strokeWidth="2" /></svg>
+            </span>
+          </button>
         </div>
       </section>
 

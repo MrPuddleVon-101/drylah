@@ -81,11 +81,11 @@ function storyLook(p: number, narrow: boolean): Look {
   const cut = ramp(p, [[STORY.flowIn[0] + 0.02, 0], [STORY.flowIn[1] + 0.02, 1]]);
   const comp = narrow
     ? ramp(p, [[0, 0], [1, 0]])
-    : ramp(p, [[0, 0.33], [STORY.heroOut, 0.33], [STORY.explode[1], 0], [STORY.labels[1], 0], [STORY.flowIn[1], -0.4], [1, -0.4]]);
+    : ramp(p, [[0, 0.36], [STORY.heroOut, 0.36], [STORY.explode[1], 0], [STORY.labels[1], 0], [STORY.flowIn[1], -0.4], [1, -0.4]]);
   const compY = narrow
     ? ramp(p, [[0, 0.5], [STORY.heroOut, 0.5], [STORY.explode[1], 0.2], [STORY.labels[1], 0.2], [STORY.flowIn[1], 0.36]])
-    : ramp(p, [[0, -0.01], [STORY.heroOut, -0.01], [STORY.explode[1], 0.02], [STORY.labels[1], 0.02], [STORY.flowIn[1], 0.1]]);
-  const fitH = ramp(p, [[0, 4.7], [STORY.heroOut, 4.7], [STORY.explode[1], 7.4], [STORY.labels[1], 7.4], [STORY.flowIn[1], 3.25]]);
+    : ramp(p, [[0, 0.07], [STORY.heroOut, 0.07], [STORY.explode[1], 0.02], [STORY.labels[1], 0.02], [STORY.flowIn[1], 0.1]]);
+  const fitH = ramp(p, [[0, 4.4], [STORY.heroOut, 4.4], [STORY.explode[1], 7.4], [STORY.labels[1], 7.4], [STORY.flowIn[1], 3.25]]);
   const fitW = narrow ? ramp(p, [[0, 0.62], [STORY.heroOut, 0.62], [STORY.explode[1], 0.95], [STORY.labels[1], 0.95], [STORY.flowIn[1], 0.62]]) : ramp(p, [[0, 0.38], [STORY.heroOut, 0.38], [STORY.explode[1], 0.34], [STORY.labels[1], 0.34], [STORY.flowIn[1], 0.46]]);
   const pitch = ramp(p, [[0, 0.3], [STORY.explode[1], 0.2], [STORY.labels[1], 0.24], [STORY.flowIn[1], 0.1]]);
   const spin = ramp(p, [[0, 1], [STORY.explode[0], 1], [STORY.explode[1], 0.25], [STORY.labels[1], 0.25], [STORY.flowIn[0], 0]]);
@@ -146,7 +146,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   const tier = detectTier();
   const Q = QUALITY[tier];
 
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true, powerPreference: 'high-performance' });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY[tier].dpr));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   // Khronos neutral: keeps product colours true instead of greying them out
@@ -158,7 +158,9 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
 
   const FOG = new THREE.Color('#010201');
   const scene = new THREE.Scene();
-  scene.background = FOG.clone();
+  // transparent: the page's backdrop wordmark shows through behind the model
+  scene.background = null;
+  renderer.setClearColor(0x000000, 0);
   scene.fog = new THREE.FogExp2(FOG, 0.035);
 
   const pmrem = new THREE.PMREMGenerator(renderer);
