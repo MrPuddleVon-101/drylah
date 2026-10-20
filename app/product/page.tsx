@@ -50,7 +50,7 @@ export default function ProductPage() {
             </div>
             <div className="panel" data-reveal>
               <span className="panel-k">Water flow</span>
-              <p>{steps.map((s) => s.label).join(', ')}. The last three steps are proposed and still need bench testing.</p>
+              <p>{steps.map((s) => s.label).join(', ')}. The last three still need bench testing.</p>
             </div>
           </div>
         </section>

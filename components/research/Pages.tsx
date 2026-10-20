@@ -203,7 +203,7 @@ export function Mechanism() {
 
       <section className="block">
         <div className="block-head">
-          <Eyebrow n="03">Proposed barrier logic</Eyebrow>
+          <Eyebrow n="03">Barrier logic</Eyebrow>
           <Split as="h2" text={['Four places', 'the barrier must hold.']} accent={['hold.']} className="h-lg" />
           <p data-reveal>A dry-looking top surface is not evidence. The barrier has to work at the mesh, the rim, the wick and the overflow. Any one gap defeats the idea.</p>
         </div>
@@ -241,7 +241,7 @@ export function Alternatives() {
     { t: 'Ordinary saucer with NEA care', d: 'Works when emptied and scrubbed every other day. The burden is the repeated task.' },
     { t: 'Wick tray', d: 'Catches drainage and returns moisture. Does not keep the stored water covered.', src: 'tumbleweed-wick' },
     { t: 'IKEA SVÄMSKOG insert', d: 'Self-watering insert with an insect-covering lid, listed at S$4.90. Replaces the pot setup rather than sitting under your own.', src: 'ikea-svamskog' },
-    { t: 'DryLah! concept', d: 'A covered base under the pot you already own, with a mesh, a wick and a screened overflow. Every performance claim is still proposed.' },
+    { t: 'DryLah! concept', d: 'A covered base under the pot you already own, with a mesh, a wick and a screened overflow. Every performance claim still needs testing.' },
   ];
   return (
     <>

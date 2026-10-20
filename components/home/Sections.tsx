@@ -140,7 +140,7 @@ export function EvidenceStates() {
             {col.status === 'proposed' && (
               <figure className="ev-photo">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={asset('/img/concept-drawing.webp')} alt="Concept drawing of the proposed mesh, wick and screened overflow." loading="lazy" style={{ objectPosition: '50% 60%' }} />
+                <img src={asset('/img/concept-drawing.webp')} alt="Concept drawing of the mesh, wick and screened overflow." loading="lazy" style={{ objectPosition: '50% 60%' }} />
                 <figcaption>Concept drawing, not yet tested</figcaption>
               </figure>
             )}
@@ -170,7 +170,7 @@ const CELL: Record<string, { label: string; cls: string }> = {
   no: { label: 'No', cls: 'no' },
   partial: { label: 'Partly', cls: 'partial' },
   na: { label: 'Not applicable', cls: 'na' },
-  proposed: { label: 'Proposed', cls: 'proposed' },
+  proposed: { label: 'By design', cls: 'proposed' },
   validate: { label: 'Must validate', cls: 'validate' },
 };
 

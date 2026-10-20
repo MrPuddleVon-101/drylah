@@ -37,10 +37,11 @@ export function Stage() {
   const flowRef = useRef<HTMLDivElement>(null);
   const hudRef = useRef<HTMLDivElement>(null);
   const cueRef = useRef<HTMLButtonElement>(null);
-  const wordRef = useRef<HTMLDivElement>(null);
+  const auraRef = useRef<HTMLDivElement>(null);
+  const hintRef = useRef<HTMLDivElement>(null);
   const labelRefs = useRef<(HTMLDivElement | null)[]>([]);
   const lineRefs = useRef<(SVGPathElement | null)[]>([]);
-  const dotRefs = useRef<(HTMLSpanElement | null)[]>([]);
+  const dotRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const stepRefs = useRef<(HTMLLIElement | null)[]>([]);
   const phaseRefs = useRef<(HTMLLIElement | null)[]>([]);
   const labelSize = useRef<{ w: number; h: number }[]>([]);
@@ -85,10 +86,11 @@ export function Stage() {
       cueRef.current.style.opacity = String(c);
       cueRef.current.style.visibility = c <= 0.001 ? 'hidden' : 'visible';
     }
-    // giant backdrop wordmark drifts sideways and fades as the model opens
-    if (wordRef.current) {
-      wordRef.current.style.transform = `translate3d(${-p * 60}vw, 0, 0)`;
-      wordRef.current.style.opacity = String(1 - span(p, 0.02, 0.16));
+    // soft aura that follows the model on screen, so it reads as the hero
+    if (auraRef.current) {
+      const r = Math.max(160, f.center.r * 1.6);
+      auraRef.current.style.transform = `translate3d(${f.center.x - r}px, ${f.center.y - r}px, 0)`;
+      auraRef.current.style.width = auraRef.current.style.height = `${r * 2}px`;
     }
 
     // "A different base" heading during the exploded view
@@ -162,6 +164,14 @@ export function Stage() {
         line.style.opacity = String(vis * (isActive || active === -1 ? 1 : 0.5));
       }
     }
+
+    // "tap any part" hint while the labels are out
+    if (hintRef.current) {
+      const hv = span(p, S.labels[0] + 0.02, S.labels[0] + 0.06) * out;
+      hintRef.current.style.opacity = String(hv);
+      hintRef.current.style.visibility = hv <= 0.001 ? 'hidden' : 'visible';
+    }
+    dotRefs.current.forEach((d) => { if (d) d.style.pointerEvents = out > 0.5 && p > S.labels[0] ? 'auto' : 'none'; });
 
     // water path: four steps
     const fl = span(p, S.flowIn[0] + 0.02, S.flowIn[1]);
@@ -272,7 +282,7 @@ export function Stage() {
       <Intro ready={ready} onWipe={onWipe} />
       <section className="stage" ref={stageRef} data-live={live} data-failed={failed} aria-label="DryLah! product">
         <div className="stage-sticky">
-          <div className="stage-word" ref={wordRef} aria-hidden><span>Dry</span><span>Lah!</span></div>
+          <div className="stage-aura" ref={auraRef} aria-hidden />
           <canvas ref={canvasRef} className="stage-canvas" aria-hidden />
           {failed && (
             <div className="stage-fallback">
@@ -317,7 +327,7 @@ export function Stage() {
             ))}
           </svg>
           {components.map((c, i) => (
-            <span key={c.key} className="anchor-dot" ref={(el) => { dotRefs.current[i] = el; }} aria-hidden><i>{c.n}</i></span>
+            <button key={c.key} type="button" className="anchor-dot" ref={(el) => { dotRefs.current[i] = el; }} onClick={() => openPart(i)} aria-label={`Open ${c.title}`} tabIndex={-1}><i>{c.n}</i></button>
           ))}
           <div className="labels">
             {components.map((c, i) => (
@@ -331,11 +341,15 @@ export function Stage() {
                   <span className="label-n">{String(c.n).padStart(2, '0')}</span>
                   <span className="label-body">
                     <span className="label-title">{c.title}</span>
-                    <Status s={c.status} label={c.statusLabel} />
+                    <span className="label-cta">Explore <i aria-hidden>+</i></span>
                   </span>
                 </button>
               </div>
             ))}
+          </div>
+
+          <div className="labels-hint" ref={hintRef} aria-hidden>
+            <span className="labels-hint-dot" />Tap any part to explore it
           </div>
 
           {/* water path */}
@@ -350,7 +364,6 @@ export function Stage() {
                   <div>
                     <h3>{s.label}</h3>
                     <p>{s.copy}</p>
-                    <Status s={s.status} label={s.statusLabel} />
                   </div>
                 </li>
               ))}

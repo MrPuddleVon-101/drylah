@@ -84,7 +84,7 @@ function storyLook(p: number, narrow: boolean): Look {
     : ramp(p, [[0, 0.36], [STORY.heroOut, 0.36], [STORY.explode[1], 0], [STORY.labels[1], 0], [STORY.flowIn[1], -0.4], [1, -0.4]]);
   const compY = narrow
     ? ramp(p, [[0, 0.5], [STORY.heroOut, 0.5], [STORY.explode[1], 0.2], [STORY.labels[1], 0.2], [STORY.flowIn[1], 0.36]])
-    : ramp(p, [[0, 0.07], [STORY.heroOut, 0.07], [STORY.explode[1], 0.02], [STORY.labels[1], 0.02], [STORY.flowIn[1], 0.1]]);
+    : ramp(p, [[0, 0.0], [STORY.heroOut, 0.0], [STORY.explode[1], 0.02], [STORY.labels[1], 0.02], [STORY.flowIn[1], 0.1]]);
   const fitH = ramp(p, [[0, 4.4], [STORY.heroOut, 4.4], [STORY.explode[1], 7.4], [STORY.labels[1], 7.4], [STORY.flowIn[1], 3.25]]);
   const fitW = narrow ? ramp(p, [[0, 0.62], [STORY.heroOut, 0.62], [STORY.explode[1], 0.95], [STORY.labels[1], 0.95], [STORY.flowIn[1], 0.62]]) : ramp(p, [[0, 0.38], [STORY.heroOut, 0.38], [STORY.explode[1], 0.34], [STORY.labels[1], 0.34], [STORY.flowIn[1], 0.46]]);
   const pitch = ramp(p, [[0, 0.3], [STORY.explode[1], 0.2], [STORY.labels[1], 0.24], [STORY.flowIn[1], 0.1]]);
@@ -114,6 +114,8 @@ export interface Anchor { x: number; y: number; side: 1 | -1; depth: number }
 
 export interface FrameInfo {
   anchors: Anchor[];
+  /** Model centre and rough radius on screen, in CSS px. */
+  center: { x: number; y: number; r: number };
   progress: number;
   width: number;
   height: number;
@@ -183,6 +185,10 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   scene.add(key);
   const rim = new THREE.DirectionalLight('#eef6ff', 1.6);
   rim.position.set(4, 2.5, -5);
+  // soft lime back light: catches the silhouette so the product separates from the dark
+  const halo = new THREE.DirectionalLight('#b5e655', 1.6);
+  halo.position.set(-1, 3, -6);
+  scene.add(halo);
   scene.add(rim);
   const rim2 = new THREE.DirectionalLight('#ffffff', 0.5);
   rim2.position.set(-5, 1, -3);
@@ -321,9 +327,15 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
     camera.updateProjectionMatrix();
   }
 
+  // the floating nav covers the top of the story canvas: frame the model in
+  // the space below it so it never slides under the bar
+  const insetTop = opts.mode === 'story' ? 104 : 0;
+  const insetBottom = opts.mode === 'story' ? 36 : 0;
+
   function fitDistance(look: Look) {
     const tanH = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const dH = (look.fitH / 2) / tanH;
+    const avail = Math.max(0.5, (height - insetTop - insetBottom) / height);
+    const dH = (look.fitH / 2) / tanH / avail;
     const dW = (2.75 / (2 * look.fitW)) / (tanH * camera.aspect);
     return Math.max(dH, dW) + 1.3;
   }
@@ -447,7 +459,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
       camera.position.set(0, Math.sin(cur.pitch) * dist, Math.cos(cur.pitch) * dist);
       camera.lookAt(0, 0, 0);
     }
-    camera.setViewOffset(width, height, -cur.comp * width * 0.5, cur.compY * height * 0.5, width, height);
+    camera.setViewOffset(width, height, -cur.comp * width * 0.5, cur.compY * height * 0.5 - (insetTop - insetBottom) / 2, width, height);
 
     floorMat.uniforms.uFocus.value.set(0, 0, 0);
     moteMat.uniforms.uTime.value = time;
@@ -500,6 +512,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   });
   const camPos = new THREE.Vector3();
   const anchors: Anchor[] = model.order.map(() => ({ x: 0, y: 0, side: 1, depth: 0 }));
+  const center = { x: 0, y: 0, r: 0 };
   function computeAnchors() {
     camera.updateMatrixWorld();
     camRight.setFromMatrixColumn(camera.matrixWorld, 0).normalize();
@@ -548,7 +561,15 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
       }
     }
     computeAnchors();
-    opts.onFrame?.({ anchors, progress, width, height });
+    // model centre and size on screen, for the CSS aura behind the canvas
+    pivot.getWorldPosition(tmpV);
+    const cx = tmpV.clone();
+    tmpV.project(camera);
+    center.x = (tmpV.x * 0.5 + 0.5) * width;
+    center.y = (-tmpV.y * 0.5 + 0.5) * height;
+    cx.addScaledVector(camRight, 1.9 * pivot.scale.x).project(camera);
+    center.r = Math.abs((cx.x * 0.5 + 0.5) * width - center.x);
+    opts.onFrame?.({ anchors, center, progress, width, height });
     if (!ready) {
       ready = true;
       opts.onReady?.();

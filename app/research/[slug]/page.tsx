@@ -28,7 +28,7 @@ const PAGES: Record<string, { title: string[]; accent?: string[]; lede: string; 
   alternatives: {
     title: ['A wick or lid alone', 'is not new.'],
     accent: ['new.'],
-    lede: 'An honest comparison of the free option, NEA-recommended plate care, wick trays, self-watering inserts and the proposed DryLah base.',
+    lede: 'An honest comparison of the free option, NEA-recommended plate care, wick trays, self-watering inserts and the DryLah base.',
     Body: Alternatives,
   },
   testing: {

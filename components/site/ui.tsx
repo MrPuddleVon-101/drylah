@@ -10,7 +10,7 @@ import type { Evidence } from '@/lib/types';
 
 const STATUS: Record<Evidence, string> = {
   demonstrated: 'Demonstrated',
-  proposed: 'Proposed',
+  proposed: 'In the design',
   validate: 'Must validate',
   public: 'Public evidence',
   project: 'Project research',

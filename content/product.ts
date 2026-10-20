@@ -21,7 +21,7 @@ export const components: Component[] = [
     short: 'Intended to separate mosquitoes from the stored water below.',
     long: 'A fine mesh sits between the platform and the water. Together with sealed edges, it is meant to stop an adult mosquito reaching the stored water. Whether it actually does has not been tested. That needs a controlled protocol and independent review.',
     status: 'proposed',
-    statusLabel: 'Proposed',
+    statusLabel: 'In the design',
   },
   {
     n: 3,
@@ -39,7 +39,7 @@ export const components: Component[] = [
     short: 'May return stored moisture to the pot when compatible soil becomes drier.',
     long: 'A fabric wick runs from the reservoir up through the drainage hole into the soil. As the soil dries, capillary action may pull some stored water back up to the roots. How well this works, and for which plants, still has to be tested.',
     status: 'proposed',
-    statusLabel: 'Proposed',
+    statusLabel: 'In the design',
   },
   {
     n: 5,
@@ -48,15 +48,15 @@ export const components: Component[] = [
     short: 'Intended to release excess water without creating an open access route.',
     long: 'During heavy watering, excess water needs somewhere to go. Screened side outlets are meant to let it out while keeping the barrier intact. Overflow, blockage and debris are all part of the bench-testing plan.',
     status: 'proposed',
-    statusLabel: 'Proposed',
+    statusLabel: 'In the design',
   },
 ];
 
 export const steps = [
-  { n: 1, label: 'Catch', copy: 'Drainage drops below the pot.', status: 'demonstrated' as Evidence, statusLabel: 'Layout demonstrated' },
-  { n: 2, label: 'Separate', copy: 'A mesh is meant to keep mozzies off the water.', status: 'proposed' as Evidence, statusLabel: 'Proposed, unverified' },
-  { n: 3, label: 'Return', copy: 'A wick may feed moisture back up.', status: 'proposed' as Evidence, statusLabel: 'Proposed, unverified' },
-  { n: 4, label: 'Release', copy: 'Excess water exits through a screen.', status: 'proposed' as Evidence, statusLabel: 'Proposed, unverified' },
+  { n: 1, label: 'Catch', copy: 'Drainage drops below the pot.', status: 'demonstrated' as Evidence },
+  { n: 2, label: 'Separate', copy: 'A mesh is meant to keep mozzies off the water.', status: 'proposed' as Evidence },
+  { n: 3, label: 'Return', copy: 'A wick may feed moisture back up.', status: 'proposed' as Evidence },
+  { n: 4, label: 'Release', copy: 'Excess water exits through a screen.', status: 'proposed' as Evidence },
 ];
 
 export const evidenceColumns: { status: Evidence; title: string; items: string[] }[] = [
@@ -67,7 +67,7 @@ export const evidenceColumns: { status: Evidence; title: string; items: string[]
   },
   {
     status: 'proposed',
-    title: 'Proposed',
+    title: 'In the design',
     items: ['Mesh and sealed gaps prevent access', 'Wick returns useful moisture', 'Screened overflow maintains barrier'],
   },
   {
