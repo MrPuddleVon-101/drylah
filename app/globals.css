@@ -85,7 +85,6 @@ body::after {
   pointer-events: none;
   opacity: 0.05;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  animation: grain 1.2s steps(6) infinite;
 }
 @keyframes grain {
   0% { transform: translate(0, 0); }
@@ -281,7 +280,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .has-cursor input, .has-cursor textarea, .has-cursor select { cursor: text; }
 .cursor > * { position: fixed; left: 0; top: 0; opacity: 0; transition: opacity 0.3s; }
 [data-cursor='on'] .cursor > * { opacity: 1; }
-.cursor-dot { width: 4px; height: 4px; margin: -2px 0 0 -2px; background: var(--void); border-radius: 50%; z-index: 1; }
+.cursor-dot { will-change: transform; width: 4px; height: 4px; margin: -2px 0 0 -2px; background: var(--void); border-radius: 50%; z-index: 1; }
 .cursor-ring {
   width: 28px; height: 28px; margin: -14px 0 0 -14px;
   background: rgba(181, 230, 85, 0.88); border-radius: 50%;
@@ -304,8 +303,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 .cursor-halo {
   width: 640px; height: 640px; margin: -320px 0 0 -320px; border-radius: 50%;
-  background: radial-gradient(closest-side, rgba(120, 200, 90, 0.075), rgba(120, 200, 90, 0.025) 45%, transparent 70%);
-  mix-blend-mode: screen;
+  background: radial-gradient(closest-side, rgba(120, 200, 90, 0.06), rgba(120, 200, 90, 0.02) 45%, transparent 70%);
+  will-change: transform;
 }
 
 /* -------------------------------------------------------------------- nav */
@@ -319,9 +318,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   position: relative; pointer-events: auto;
   display: flex; align-items: center; gap: 10px;
   height: 56px; padding: 0 8px 0 18px;
-  background: rgba(6, 16, 10, 0.72);
-  backdrop-filter: blur(16px) saturate(1.5);
-  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  background: rgba(6, 14, 9, 0.93);
   box-shadow: inset 0 0 0 1px var(--rule-2), 0 18px 50px -20px rgba(0, 0, 0, 0.8);
   transition: box-shadow 0.5s var(--ease), background-color 0.5s var(--ease), padding 0.6s var(--ease-io);
   animation: navIn 1s var(--ease-out) both;
@@ -520,6 +517,11 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .stage { position: relative; height: 820vh; }
 .stage-sticky { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; }
 .stage-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* vignette in CSS rather than a post-processing pass */
+.stage-sticky::after, .viewer::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background: radial-gradient(ellipse 75% 70% at 55% 50%, transparent 55%, rgba(0, 0, 0, 0.55) 100%);
+}
 .stage::after {
   content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 24vh; pointer-events: none;
   background: linear-gradient(transparent, var(--void));
@@ -1047,7 +1049,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 /* product viewer page */
 .viewer { position: relative; height: calc(100svh - var(--nav-h)); min-height: 620px; border-bottom: 1px solid var(--rule); }
 .viewer canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
-.viewer-ui { position: absolute; inset: 0; pointer-events: none; }
+.viewer-ui { position: absolute; inset: 0; pointer-events: none; z-index: 2; }
 .viewer-ui > * { pointer-events: auto; }
 .viewer-title { position: absolute; left: var(--gutter); top: 34px; max-width: 460px; pointer-events: none; }
 .viewer-title h1 { font-size: var(--t-3); font-weight: 900; font-variation-settings: 'wdth' 120; letter-spacing: -0.04em; line-height: 0.94; }

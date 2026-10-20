@@ -96,7 +96,7 @@ function ringShape(rIn: number, rOut: number) {
   return s;
 }
 
-function extrudeUp(shape: THREE.Shape, y0: number, y1: number, bevel: number, curveSegments = 96) {
+function extrudeUp(shape: THREE.Shape, y0: number, y1: number, bevel: number, curveSegments = 72) {
   const h = y1 - y0;
   const b = Math.min(bevel, h * 0.3);
   const g = new THREE.ExtrudeGeometry(shape, {
@@ -105,7 +105,7 @@ function extrudeUp(shape: THREE.Shape, y0: number, y1: number, bevel: number, cu
     bevelThickness: b,
     bevelSize: b,
     bevelOffset: -b,
-    bevelSegments: 3,
+    bevelSegments: 2,
     curveSegments,
   });
   g.rotateX(-Math.PI / 2);
@@ -169,7 +169,7 @@ function rng(seed: number) {
 
 /** Round clay ball with a little surface wobble. */
 function pebbleGeometry(seed: number) {
-  const g = new THREE.IcosahedronGeometry(1, 3);
+  const g = new THREE.IcosahedronGeometry(1, 1);
   const rand = rng(seed);
   const pos = g.getAttribute('position') as THREE.BufferAttribute;
   const k = [rand() * 6, rand() * 6, rand() * 6];
@@ -344,8 +344,8 @@ export function buildModel(opts: { shadows: boolean }): Model {
 
   const lines = clip(track(new THREE.LineBasicMaterial({ color: '#c8f57e', transparent: true, opacity: 0.18, depthWrite: false })));
 
-  const plastic = (color = GREEN) => clip(track(new THREE.MeshPhysicalMaterial({
-    color, roughness: 0.62, metalness: 0, clearcoat: 0.08, clearcoatRoughness: 0.6, side: THREE.DoubleSide,
+  const plastic = (color = GREEN) => clip(track(new THREE.MeshStandardMaterial({
+    color, roughness: 0.62, metalness: 0, side: THREE.DoubleSide,
   })));
 
   const mesh = (g: THREE.BufferGeometry, m: THREE.Material, cast = true) => {
@@ -497,8 +497,8 @@ export function buildModel(opts: { shadows: boolean }): Model {
     halves.forEach((set, hi) => {
       const geo = track(pebbleGeometry(hi ? 11 : 3));
       const inst = new THREE.InstancedMesh(geo, stone, set.length);
-      inst.receiveShadow = opts.shadows;
-      inst.castShadow = opts.shadows;
+      inst.receiveShadow = false;
+      inst.castShadow = false;
       const base: THREE.Matrix4[] = [];
       const angle = new Float32Array(set.length);
       const q = new THREE.Quaternion();
@@ -558,7 +558,8 @@ export function buildModel(opts: { shadows: boolean }): Model {
         s.holes.push(h);
       }
     }
-    g.add(mesh(extrudeUp(s, PLATE_Y0, PLATE_Y1, 0.01, 10), m));
+    // no bevel on the perforated plate: each hole would get bevel rings too
+    g.add(mesh(extrudeUp(s, PLATE_Y0, PLATE_Y1, 0, 8), m));
     g.add(mesh(extrudeUp(ringShape(RP - 0.07, RP), PLATE_Y1 - 0.01, PLATE_Y1 + 0.045, 0.01), m));
     g.add(mesh(extrudeUp(ringShape(0.12, 0.21), PLATE_Y1 - 0.01, PLATE_Y1 + 0.06, 0.01, 48), m));
     for (const f of FIN_PHI) {
@@ -603,7 +604,7 @@ export function buildModel(opts: { shadows: boolean }): Model {
     const [y0, y1] = WICK_Y;
     for (let k = 0; k < 3; k++) {
       const curve = new Helix((k / 3) * Math.PI * 2, y0, y1, 0.034, (y1 - y0) / 0.13);
-      g.add(mesh(new THREE.TubeGeometry(curve, 360, 0.034, 8, false), rope));
+      g.add(mesh(new THREE.TubeGeometry(curve, 240, 0.034, 6, false), rope));
     }
     const sleeve = new THREE.Mesh(track(new THREE.CylinderGeometry(0.09, 0.09, y1 - y0, 32, 1, true)), pulse);
     sleeve.position.y = (y0 + y1) / 2;
@@ -669,9 +670,8 @@ export function buildModel(opts: { shadows: boolean }): Model {
     // golden pothos: broad marbled leaves on long petioles, fountaining out
     const leafMats = [3, 9, 17].map((seed) => {
       const t = track(leafTexture(seed));
-      return track(new THREE.MeshPhysicalMaterial({
-        map: t, roughness: 0.52, clearcoat: 0.12, clearcoatRoughness: 0.5, side: THREE.DoubleSide,
-        bumpMap: t, bumpScale: 0.4,
+      return track(new THREE.MeshStandardMaterial({
+        map: t, roughness: 0.5, side: THREE.DoubleSide, bumpMap: t, bumpScale: 0.4,
       }));
     });
     const stemMat = track(new THREE.MeshStandardMaterial({ color: '#5d9c3e', roughness: 0.55 }));
@@ -755,6 +755,10 @@ export function buildModel(opts: { shadows: boolean }): Model {
     dropData[i * 4 + 2] = 0.2 + dr() * 0.5;
     dropData[i * 4 + 3] = Math.PI / 2 + (dr() - 0.5) * 1.6;
   }
+
+  // only the pot, plant and platform throw shadows anyone can see; the rest
+  // would just double their cost in the shadow pass
+  for (const g of [tray.group, storage.group, screen.group]) g.traverse((o) => { o.castShadow = false; });
 
   const parts = { overflow: tray, storage, mesh: screen, platform: plate, wick, pot } as Record<PartKey, Part>;
 

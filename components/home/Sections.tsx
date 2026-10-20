@@ -16,7 +16,11 @@ export function Marquee({ items }: { items: string[] }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    let x = 0, v = 0, lastY = scrollY, raf = 0;
+    let x = 0, v = 0, lastY = scrollY, raf = 0, w = 1;
+    const measure = () => { if (ref.current) w = ref.current.scrollWidth / 2; };
+    measure();
+    const ro = new ResizeObserver(measure);
+    if (ref.current) ro.observe(ref.current);
     const loop = () => {
       raf = requestAnimationFrame(loop);
       const dy = scrollY - lastY;
@@ -25,13 +29,12 @@ export function Marquee({ items }: { items: string[] }) {
       x -= 0.6 + Math.abs(v) * 1.2 * Math.sign(v || 1);
       const el = ref.current;
       if (!el) return;
-      const w = el.scrollWidth / 2;
       if (x <= -w) x += w;
       if (x > 0) x -= w;
       el.style.transform = `translate3d(${x}px,0,0) skewX(${Math.max(-8, Math.min(8, -v * 0.6))}deg)`;
     };
     raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
   }, []);
   const row = (k: string) => (
     <div className="marquee-row" key={k} aria-hidden={k === 'b'}>

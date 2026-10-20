@@ -42,6 +42,7 @@ export function Stage() {
   const dotRefs = useRef<(HTMLSpanElement | null)[]>([]);
   const stepRefs = useRef<(HTMLLIElement | null)[]>([]);
   const phaseRefs = useRef<(HTMLLIElement | null)[]>([]);
+  const labelSize = useRef<{ w: number; h: number }[]>([]);
 
   const [ready, setReady] = useState(false);
   const [live, setLive] = useState(false);
@@ -101,7 +102,7 @@ export function Stage() {
     for (const side of [1, -1]) {
       const col = [0, 1, 2, 3, 4]
         .filter((i) => f.anchors[i].side === side)
-        .map((i) => ({ i, y: f.anchors[i].y - 18, h: (labelRefs.current[i]?.offsetHeight ?? 120) + 14 }))
+        .map((i) => ({ i, y: f.anchors[i].y - 18, h: (labelSize.current[i]?.h ?? 90) + 14 }))
         .sort((a, b) => a.y - b.y);
       for (let k = 0; k < col.length; k++) {
         col[k].y = Math.max(col[k].y, k ? col[k - 1].y + col[k - 1].h : top);
@@ -134,7 +135,7 @@ export function Stage() {
         continue;
       }
       const gap = Math.min(140, f.width * 0.07);
-      const bw = el.offsetWidth;
+      const bw = labelSize.current[i]?.w ?? 300;
       const bx = a.side > 0 ? a.x + gap : a.x - gap - bw;
       const x = Math.max(24, Math.min(f.width - bw - 24, bx));
       const y = slotY[i];
@@ -175,6 +176,18 @@ export function Stage() {
       hudRef.current.style.setProperty('--p', String(p));
       hudRef.current.style.opacity = String(1 - span(p, 0.985, 1));
     }
+  }, []);
+
+  /* label sizes, measured off the frame loop so it never forces layout */
+  useEffect(() => {
+    const els = labelRefs.current.filter(Boolean) as HTMLDivElement[];
+    const measure = () => {
+      labelSize.current = labelRefs.current.map((el) => (el ? { w: el.offsetWidth, h: el.offsetHeight } : { w: 300, h: 90 }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    els.forEach((el) => ro.observe(el));
+    return () => ro.disconnect();
   }, []);
 
   /* engine */

@@ -1,15 +1,10 @@
 import * as THREE from 'three';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
-import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
-import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
-import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
-import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 
 import { buildModel, MODEL, type PartKey } from './model';
 import {
-  basicVert, floorFrag, gradeShader, moteFrag, moteVert, shadowFrag,
+  basicVert, floorFrag, moteFrag, moteVert, shadowFrag,
 } from './shaders';
 
 /* ------------------------------------------------------------------ quality */
@@ -26,9 +21,9 @@ function detectTier(): Tier {
 }
 
 const QUALITY = {
-  high: { dpr: 2, shadows: true, bloom: true, motes: 110 },
-  mid: { dpr: 1.6, shadows: true, bloom: true, motes: 80 },
-  low: { dpr: 1.5, shadows: false, bloom: false, motes: 50 },
+  high: { dpr: 1.6, shadows: true, shadowMap: 1024, motes: 90 },
+  mid: { dpr: 1.35, shadows: true, shadowMap: 1024, motes: 60 },
+  low: { dpr: 1.15, shadows: false, shadowMap: 512, motes: 30 },
 };
 
 /* ------------------------------------------------------------------- easing */
@@ -152,7 +147,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   const Q = QUALITY[tier];
 
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, Q.dpr));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, QUALITY[tier].dpr));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   // Khronos neutral: keeps product colours true instead of greying them out
   renderer.toneMapping = THREE.NeutralToneMapping;
@@ -177,7 +172,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   const key = new THREE.DirectionalLight('#fff8ef', 2.7);
   key.position.set(-3.5, 6, 4);
   key.castShadow = Q.shadows;
-  key.shadow.mapSize.set(2048, 2048);
+  key.shadow.mapSize.set(Q.shadowMap, Q.shadowMap);
   key.shadow.camera.left = -4; key.shadow.camera.right = 4;
   key.shadow.camera.top = 5; key.shadow.camera.bottom = -4;
   key.shadow.camera.near = 1; key.shadow.camera.far = 20;
@@ -259,14 +254,10 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
   scene.add(motes);
 
   /* post */
-  // multisampled target: post-processing otherwise drops antialiasing and edges go jagged
-  const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { samples: 4, type: THREE.HalfFloatType }));
-  composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.14, 0.35, 0.96);
-  if (Q.bloom) composer.addPass(bloom);
-  const grade = new ShaderPass(gradeShader);
-  composer.addPass(grade);
-  composer.addPass(new OutputPass());
+  // No post-processing: the canvas renders straight to screen with native
+  // MSAA. Vignette and grain are done in CSS, which costs nothing per frame.
+  let dpr = Math.min(window.devicePixelRatio, Q.dpr);
+  const frameTimes: number[] = [];
 
   /* controls (viewer only) */
   let controls: OrbitControls | null = null;
@@ -324,8 +315,6 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
     height = Math.max(1, r.height);
     narrow = width < 1024;
     renderer.setSize(width, height, false);
-    composer.setSize(width, height);
-    bloom.setSize(width, height);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
   }
@@ -460,7 +449,6 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
 
     floorMat.uniforms.uFocus.value.set(0, 0, 0);
     moteMat.uniforms.uTime.value = time;
-    grade.uniforms.uTime.value = time;
   }
 
   const dropM = new THREE.Matrix4();
@@ -540,7 +528,23 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
     if (paused) return;
     frames++;
     step(dt);
-    composer.render(dt);
+    renderer.render(scene, camera);
+    // adaptive resolution: if frames run long, step the pixel ratio down
+    frameTimes.push(dt);
+    if (frameTimes.length >= 90) {
+      const avg = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
+      frameTimes.length = 0;
+      if (avg > 1 / 45 && dpr > 1) {
+        dpr = Math.max(1, dpr - 0.2);
+        renderer.setPixelRatio(dpr);
+        renderer.setSize(width, height, false);
+        if (dpr <= 1.05 && renderer.shadowMap.enabled) {
+          // last resort on slow machines: freeze shadows after one update
+          renderer.shadowMap.autoUpdate = false;
+          renderer.shadowMap.needsUpdate = true;
+        }
+      }
+    }
     computeAnchors();
     opts.onFrame?.({ anchors, progress, width, height });
     if (!ready) {
@@ -576,7 +580,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
       }
     },
     intro() { if (introT < 0) introT = 0; },
-    debug() { return { frames, paused, progress, disposed }; },
+    debug() { return { frames, paused, progress, disposed, dpr, triangles: renderer.info.render.triangles, calls: renderer.info.render.calls }; },
     dispose() {
       disposed = true;
       cancelAnimationFrame(raf);
@@ -587,7 +591,6 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
       contact.geometry.dispose(); shadowMat.dispose();
       moteGeo.dispose(); moteMat.dispose();
       env.dispose(); pmrem.dispose();
-      composer.dispose();
       renderer.dispose();
     },
   };

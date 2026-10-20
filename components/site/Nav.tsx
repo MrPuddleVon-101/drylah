@@ -40,10 +40,14 @@ export function Nav() {
     let raf = 0;
     let lastY = scrollY;
     let acc = 0;
+    let max = 1;
+    const measure = () => { max = document.documentElement.scrollHeight - innerHeight; };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(document.body);
     const loop = () => {
       raf = requestAnimationFrame(loop);
       const y = scrollY;
-      const max = document.documentElement.scrollHeight - innerHeight;
       if (barRef.current) barRef.current.style.transform = `scaleX(${max > 0 ? y / max : 0})`;
       const dy = y - lastY;
       lastY = y;
@@ -54,7 +58,7 @@ export function Nav() {
       else if (acc < -30) setCollapsed(false);
     };
     raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
   }, []);
 
   useEffect(() => {
