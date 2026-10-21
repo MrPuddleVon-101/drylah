@@ -1,7 +1,11 @@
 'use client';
 
-import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
+import { useEffect, useLayoutEffect } from 'react';
 import type Lenis from 'lenis';
+
+type LenisLike = { scrollTo(y: number, o?: object): void; resize(): void };
+const getLenis = () => (window as unknown as { __lenis?: LenisLike }).__lenis;
 
 /**
  * Weighted scrolling. The product story is driven by scroll position, so the scroll
@@ -17,6 +21,27 @@ import type Lenis from 'lenis';
  * correct behaviour.
  */
 export function SmoothScroll() {
+  const pathname = usePathname();
+
+  /*
+   * Route changes. Lenis keeps easing toward its last target, so a link
+   * clicked while the page was still coasting used to open the next page
+   * part-way down (or at the bottom), overriding the router's scroll to top
+   * or its back/forward restoration. On every route commit the pending glide
+   * is cancelled before the router positions the page, and Lenis re-measures
+   * the new document and adopts whatever position the router chose.
+   */
+  useLayoutEffect(() => {
+    const lenis = getLenis();
+    if (!lenis) return;
+    lenis.scrollTo(window.scrollY, { immediate: true, force: true });
+    const id = requestAnimationFrame(() => {
+      lenis.resize();
+      lenis.scrollTo(window.scrollY, { immediate: true, force: true });
+    });
+    return () => cancelAnimationFrame(id);
+  }, [pathname]);
+
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 

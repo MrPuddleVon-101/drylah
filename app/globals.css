@@ -60,6 +60,9 @@
 html {
   background: var(--void);
   color-scheme: dark;
+  /* the intro card and the mobile menu lock scrolling; keep the scrollbar's
+     space reserved so the page never shifts sideways when they do */
+  scrollbar-gutter: stable;
   -webkit-text-size-adjust: 100%;
 }
 
@@ -696,8 +699,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 /* aura behind the model: the canvas is transparent, so this glows through */
 .stage-aura {
   position: absolute; left: 0; top: 0; z-index: 0; pointer-events: none; border-radius: 50%;
+  width: 800px; height: 800px; transform-origin: 0 0; transform: scale(0);
   background: radial-gradient(circle, rgba(181, 230, 85, 0.2) 0%, rgba(63, 163, 99, 0.12) 32%, rgba(63, 163, 99, 0.04) 55%, transparent 70%);
-  will-change: transform, width, height;
+  will-change: transform;
 }
 .stage-canvas { z-index: 1; }
 
@@ -1228,6 +1232,9 @@ textarea.input { height: 130px; padding: 14px 16px; resize: vertical; }
 
 @media (max-width: 1023px) {
   .labels-hint { display: none; }
+  /* the hero docks to the bottom here, where the cue sat on top of the CTAs;
+     tablets take the phone treatment (the Explore button does the same job) */
+  .scroll-cue { display: none; }
   .stage { height: 740vh; }
   .hero { left: var(--gutter); right: var(--gutter); top: auto; bottom: 90px; translate: none; width: auto; max-width: 640px; }
   .hero-title { font-size: clamp(2.3rem, 9vw, 4.4rem); }

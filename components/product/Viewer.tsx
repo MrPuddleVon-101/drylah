@@ -36,7 +36,6 @@ export function Viewer() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     let disposed = false;
-    let onResize: (() => void) | null = null;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     import('@/components/three/engine')
       .then(({ createEngine }) => {
@@ -45,14 +44,12 @@ export function Viewer() {
           const h = createEngine(canvas, { mode: 'viewer', reducedMotion: reduced, onFrame });
           h.intro();
           handleRef.current = h;
-          onResize = () => h.resize();
-          addEventListener('resize', onResize, { passive: true });
+          // the engine watches its own canvas size (ResizeObserver)
         } catch { setFailed(true); }
       })
       .catch(() => setFailed(true));
     return () => {
       disposed = true;
-      if (onResize) removeEventListener('resize', onResize);
       handleRef.current?.dispose();
       handleRef.current = null;
     };

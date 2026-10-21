@@ -317,15 +317,51 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
     return o;
   });
 
-  function resize() {
-    const r = canvas.getBoundingClientRect();
-    width = Math.max(1, r.width);
-    height = Math.max(1, r.height);
+  /*
+   * Resizing a canvas clears its drawing buffer, and the browser can composite
+   * that empty buffer before the next render. So the size is only applied at
+   * the top of a frame (immediately followed by a render), only when it really
+   * changed, and never to zero (a collapsed or hidden canvas keeps its last size).
+   * Mobile URL-bar show/hide fires resize events without changing the canvas,
+   * which used to blank the model mid-scroll.
+   */
+  let sizeDirty = true;
+  let pendingDpr = 0;
+  function applySize() {
+    sizeDirty = false;
+    const w = canvas.clientWidth, h = canvas.clientHeight;
+    if (w < 2 || h < 2) return;
+    const dprChanged = pendingDpr > 0 && pendingDpr !== renderer.getPixelRatio();
+    if (!dprChanged && w === width && h === height) return;
+    width = w;
+    height = h;
     narrow = width < 1024;
+    if (dprChanged) renderer.setPixelRatio(pendingDpr);
+    pendingDpr = 0;
     renderer.setSize(width, height, false);
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
   }
+  const resize = () => { sizeDirty = true; };
+  const ro = new ResizeObserver(resize);
+  ro.observe(canvas);
+  const onDprChange = () => { pendingDpr = Math.min(window.devicePixelRatio, Q.dpr, dpr); sizeDirty = true; };
+  let dprQuery = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+  const watchDpr = () => {
+    dprQuery.removeEventListener('change', onDprChangeOnce);
+    dprQuery = matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    dprQuery.addEventListener('change', onDprChangeOnce);
+  };
+  function onDprChangeOnce() { onDprChange(); watchDpr(); }
+  dprQuery.addEventListener('change', onDprChangeOnce);
+
+  /* WebGL context loss (GPU reset, too many tabs): stop drawing until three
+     restores the context, then pick up from the same state. */
+  let contextLost = false;
+  const onLost = (e: Event) => { e.preventDefault(); contextLost = true; };
+  const onRestored = () => { contextLost = false; sizeDirty = true; width = 0; };
+  canvas.addEventListener('webglcontextlost', onLost);
+  canvas.addEventListener('webglcontextrestored', onRestored);
 
   // the floating nav covers the top of the story canvas: frame the model in
   // the space below it so it never slides under the bar
@@ -345,7 +381,9 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
 
     // target look
     let target: Look;
-    if (opts.mode === 'story') {
+    if (warmTarget) {
+      target = warmTarget;
+    } else if (opts.mode === 'story') {
       const raw = clamp01(opts.getProgress?.() ?? 0);
       progress = damp(progress, raw, 7, dt);
       target = storyLook(progress, narrow);
@@ -535,24 +573,57 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
     }
   }
 
+  /*
+   * Shader warm-up. three compiles a material's program the first time it is
+   * drawn, and the water, arrows, drops and cutaway only become visible deep in
+   * the scroll story, so their compile (300 to 650 ms) used to freeze the page
+   * mid-scroll. Before the reveal, the key looks are rendered once each while
+   * the title card (or the page's first paint) still covers the canvas.
+   */
+  const warmLooks: Look[] = opts.mode === 'story'
+    ? [storyLook(0.16, false), storyLook(0.42, false), storyLook(0.86, false)]
+    : [viewerLook('exploded', false, -1), viewerLook('flow', false, -1)];
+  let warmTarget: Look | null = null;
+  function warmUp() {
+    const keep = { time, idleYaw, introT, progress };
+    const keepCam = camera.position.clone();
+    for (const look of warmLooks) {
+      warmTarget = look;
+      step(10);
+      renderer.render(scene, camera);
+    }
+    warmTarget = null;
+    time = keep.time; idleYaw = keep.idleYaw; introT = keep.introT;
+    // snap straight to the real starting look (and the real scroll position)
+    progress = opts.mode === 'story' ? clamp01(opts.getProgress?.() ?? 0) : keep.progress;
+    step(10);
+    time = keep.time; idleYaw = keep.idleYaw; introT = keep.introT;
+    if (controls) camera.position.copy(keepCam);
+  }
+  let warmed = false;
+
   function frame(now: number) {
     if (disposed) return;
     raf = requestAnimationFrame(frame);
     const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));
     last = now;
-    if (paused) return;
+    if (paused || contextLost) return;
+    if (sizeDirty) applySize();
+    if (!warmed) { warmed = true; warmUp(); last = performance.now(); }
     frames++;
     step(dt);
     renderer.render(scene, camera);
-    // adaptive resolution: if frames run long, step the pixel ratio down
+    // adaptive resolution: if frames run long, step the pixel ratio down. The
+    // change is applied at the top of the next frame, right before a render,
+    // so the cleared buffer is never shown.
     frameTimes.push(dt);
     if (frameTimes.length >= 90) {
       const avg = frameTimes.reduce((a, b) => a + b, 0) / frameTimes.length;
       frameTimes.length = 0;
       if (avg > 1 / 45 && dpr > 1) {
         dpr = Math.max(1, dpr - 0.2);
-        renderer.setPixelRatio(dpr);
-        renderer.setSize(width, height, false);
+        pendingDpr = dpr;
+        sizeDirty = true;
         if (dpr <= 1.05 && renderer.shadowMap.enabled) {
           // last resort on slow machines: freeze shadows after one update
           renderer.shadowMap.autoUpdate = false;
@@ -576,7 +647,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
     }
   }
 
-  resize();
+  applySize();
   if (controls) {
     const d = fitDistance(cur);
     camera.position.set(0.9, Math.sin(0.3) * d, Math.cos(0.3) * d);
@@ -591,6 +662,7 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
       paused = p;
       last = performance.now();
     },
+
     setMotion(on) { motion = on; },
     setMode(m) { viewerMode = m; },
     setFocus(i) { viewerFocus = i; },
@@ -603,10 +675,14 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
       }
     },
     intro() { if (introT < 0) introT = 0; },
-    debug() { return { frames, paused, progress, disposed, dpr, triangles: renderer.info.render.triangles, calls: renderer.info.render.calls }; },
+    debug() { return { frames, paused, progress, disposed, dpr, triangles: renderer.info.render.triangles, calls: renderer.info.render.calls, programs: renderer.info.programs?.length ?? 0 }; },
     dispose() {
       disposed = true;
       cancelAnimationFrame(raf);
+      ro.disconnect();
+      dprQuery.removeEventListener('change', onDprChangeOnce);
+      canvas.removeEventListener('webglcontextlost', onLost);
+      canvas.removeEventListener('webglcontextrestored', onRestored);
       window.removeEventListener('pointermove', onPointer);
       controls?.dispose();
       model.dispose();
@@ -615,6 +691,10 @@ export function createEngine(canvas: HTMLCanvasElement, opts: EngineOptions): En
       moteGeo.dispose(); moteMat.dispose();
       env.dispose(); pmrem.dispose();
       renderer.dispose();
+      // Free the GPU context once the canvas has left the page (route change).
+      // Under React Strict Mode the same canvas is reused straight away, and a
+      // lost context cannot be reacquired, so only release a detached canvas.
+      setTimeout(() => { if (!canvas.isConnected) renderer.forceContextLoss(); }, 0);
     },
   };
 }

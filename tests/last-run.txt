@@ -1,0 +1,19 @@
+PASS  first load: intro plays, then hero and 3D model appear  {"modelInk":0.518,"contexts":1}
+PASS  scroll story: exploded view, labels, water path, HUD  {"labels":4}
+PASS  scrolling: no blocking frames over 200 ms, no extra canvas clears  {"maxBlock":36,"clears":0}
+PASS  component hotspot opens the drawer; Escape closes it
+PASS  hero call to action glides into the story  {"y":1701}
+PASS  route change while coasting lands at the top of the next page  {"y":0}
+PASS  back and forward restore position without a jump  {"back":{"path":"/team/","y":900,"lenis":900},"fwd":{"path":"/research/","y":0}}
+PASS  repeated Home and Product navigation: no context warnings, model renders  {"heapMB":61,"ink":0.517}
+PASS  product viewer: assembled, exploded, water flow, zoom, hotspot
+PASS  order form: validation, then demo-mode submission
+PASS  every route loads directly with a heading and no errors  {"/":{"cls":0},"/product/":{"cls":0},"/research/":{"cls":0},"/research/mechanism/":{"cls":0},"/team/":{"cls":0},"/order/":{"cls":0},"/sources/":{"cls":0}}
+PASS  reload midway down a page keeps the position and shows content  {"y":1400}
+PASS  mobile menu opens, locks scroll, navigates and closes
+PASS  reduced motion: no intro, content visible, native scrolling
+PASS  breakpoints: no horizontal overflow, hero inside the viewport  {"1920x1080":"ok","1440x900":"ok","1366x768":"ok","1024x768":"ok","820x1180":"ok","430x932":"ok","390x844":"ok","360x800":"ok","zoom125":"ok","zoom150":"ok"}
+PASS  soak: two minutes of scrolling and navigation stays stable  {"loops":22,"heapStartMB":24,"heapEndMB":49}
+PASS  no console errors or failed requests in the main session
+
+17/17 passed

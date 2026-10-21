@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 import { sourceById } from '@/content/sources';
 import type { Evidence } from '@/lib/types';
@@ -126,7 +126,9 @@ export function Split({ text, as: Tag = 'h2', className, accent, delay = 0 }: {
 export function Counter({ to, prefix = '', suffix = '', duration = 1600 }: { to: number; prefix?: string; suffix?: string; duration?: number }) {
   const ref = useRef<HTMLSpanElement>(null);
   const [val, setVal] = useState(to);
-  useEffect(() => {
+  // layout effect: the reset to 0 lands before the browser paints, so the
+  // final number never flashes before the count-up
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;

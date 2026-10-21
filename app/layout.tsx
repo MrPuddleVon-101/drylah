@@ -42,6 +42,8 @@ export const metadata: Metadata = {
   icons: { icon: asset('/brand/mark.png') },
 };
 
+const MOTION_SCRIPT = "try{document.documentElement.dataset.motion=matchMedia('(prefers-reduced-motion: reduce)').matches?'reduced':'full'}catch(e){}";
+
 export const viewport: Viewport = {
   themeColor: '#010201',
   colorScheme: 'dark',
@@ -49,7 +51,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en-SG" className={`${display.variable} ${mono.variable}`}>
+    // suppressHydrationWarning: the pre-paint script below sets data-motion on <html>
+    <html lang="en-SG" className={`${display.variable} ${mono.variable}`} suppressHydrationWarning>
+      <head>
+        {/* Decide the motion mode before first paint. Reveal styles are keyed to
+            [data-motion='full']; set only after hydration, content painted
+            visible, then snapped to hidden and animated back in (a flash). */}
+        <script dangerouslySetInnerHTML={{ __html: MOTION_SCRIPT }} />
+      </head>
       <body>
         <a className="skip-link" href="#main">Skip to content</a>
         <SmoothScroll />

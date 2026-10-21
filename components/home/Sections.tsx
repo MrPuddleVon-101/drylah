@@ -21,6 +21,15 @@ export function Marquee({ items }: { items: string[] }) {
     measure();
     const ro = new ResizeObserver(measure);
     if (ref.current) ro.observe(ref.current);
+    // only run while the band is on screen
+    let onScreen = false;
+    const io = new IntersectionObserver(([e]) => {
+      if (e.isIntersecting === onScreen) return;
+      onScreen = e.isIntersecting;
+      cancelAnimationFrame(raf);
+      if (onScreen) { lastY = scrollY; raf = requestAnimationFrame(loop); }
+    });
+    if (ref.current) io.observe(ref.current);
     const loop = () => {
       raf = requestAnimationFrame(loop);
       const dy = scrollY - lastY;
@@ -33,8 +42,7 @@ export function Marquee({ items }: { items: string[] }) {
       if (x > 0) x -= w;
       el.style.transform = `translate3d(${x}px,0,0) skewX(${Math.max(-8, Math.min(8, -v * 0.6))}deg)`;
     };
-    raf = requestAnimationFrame(loop);
-    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); io.disconnect(); };
   }, []);
   const row = (k: string) => (
     <div className="marquee-row" key={k} aria-hidden={k === 'b'}>

@@ -41,6 +41,7 @@ export function Nav() {
     let lastY = scrollY;
     let acc = 0;
     let max = 1;
+    let folded = false;
     const measure = () => { max = document.documentElement.scrollHeight - innerHeight; };
     measure();
     const ro = new ResizeObserver(measure);
@@ -53,9 +54,9 @@ export function Nav() {
       lastY = y;
       // fold after a deliberate scroll down, unfold on any real scroll up
       acc = Math.sign(dy) === Math.sign(acc) ? acc + dy : dy;
-      if (y < 120) setCollapsed(false);
-      else if (acc > 40) setCollapsed(true);
-      else if (acc < -30) setCollapsed(false);
+      // only touch React state when the fold actually changes
+      const next = y < 120 ? false : acc > 40 ? true : acc < -30 ? false : folded;
+      if (next !== folded) { folded = next; setCollapsed(next); }
     };
     raf = requestAnimationFrame(loop);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); };
@@ -65,9 +66,13 @@ export function Nav() {
     if (!open) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    // Lenis drives the scroll position itself; without stopping it, wheel
+    // input kept moving its target behind the menu and the page jumped on close
+    const lenis = (window as unknown as { __lenis?: { stop(): void; start(): void } }).__lenis;
+    lenis?.stop();
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
     addEventListener('keydown', onKey);
-    return () => { document.body.style.overflow = prev; removeEventListener('keydown', onKey); };
+    return () => { document.body.style.overflow = prev; lenis?.start(); removeEventListener('keydown', onKey); };
   }, [open]);
 
   const active = (href: string) => (href.startsWith('/#') ? false : pathname.startsWith(href));

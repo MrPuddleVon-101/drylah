@@ -38,6 +38,8 @@
   "exclude": [
     "node_modules",
     "out",
-    ".next"
+    ".next",
+    "drylah_edit_scenes_04_05",
+    "video"
   ]
 }

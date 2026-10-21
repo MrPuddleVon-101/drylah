@@ -9,6 +9,7 @@ Next.js static export, Three.js scene built procedurally in `components/three/`.
 npm install
 npm run dev        # http://localhost:3222
 npm run build      # static site in ./out
+npm run test:e2e   # 17 browser tests against ./out (system Chrome); see GLITCH_AUDIT.md
 ```
 
 Pushing to `main` deploys to GitHub Pages via `.github/workflows/pages.yml`.

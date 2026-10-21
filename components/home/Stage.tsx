@@ -25,6 +25,8 @@ const span = (p: number, a: number, b: number) => clamp01((p - a) / (b - a));
 const ease = (t: number) => 1 - Math.pow(1 - t, 3);
 
 const PHASES = ['Assembled', 'Exploded', 'Components', 'Water path'];
+/** .stage-aura is laid out at 2 x AURA_BASE px and scaled from its top-left. */
+const AURA_BASE = 400;
 
 export function Stage() {
   const stageRef = useRef<HTMLElement>(null);
@@ -45,6 +47,7 @@ export function Stage() {
   const stepRefs = useRef<(HTMLLIElement | null)[]>([]);
   const phaseRefs = useRef<(HTMLLIElement | null)[]>([]);
   const labelSize = useRef<{ w: number; h: number }[]>([]);
+  const wipedRef = useRef(false);
 
   const [ready, setReady] = useState(false);
   const [live, setLive] = useState(false);
@@ -52,21 +55,36 @@ export function Stage() {
   const [motion, setMotion] = useState(true);
   const [drawer, setDrawer] = useState<number | null>(null);
 
-  /* scroll progress through the pinned stage */
+  /* scroll progress through the pinned stage.
+     Geometry is measured only when it changes (ResizeObserver), and the frame
+     loop reads nothing but scrollY, so it never forces a layout after the
+     engine's style writes. The scroll range uses the sticky viewport's own
+     height (100svh), which does not change when a mobile URL bar shows or
+     hides, so the story no longer lurches by the bar's height mid-scroll. */
   useEffect(() => {
-    let raf = 0;
+    const el = stageRef.current;
+    const sticky = el?.querySelector<HTMLElement>('.stage-sticky');
+    if (!el || !sticky) return;
+    let top = 0, height = 1, view = 1, raf = 0;
+    const measure = () => {
+      top = el.getBoundingClientRect().top + scrollY;
+      height = el.offsetHeight;
+      view = sticky.offsetHeight;
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    ro.observe(document.body);
     const loop = () => {
       raf = requestAnimationFrame(loop);
-      const el = stageRef.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
-      const total = r.height - innerHeight;
-      progressRef.current = total > 0 ? clamp01(-r.top / total) : 0;
+      const y = scrollY - top;
+      const total = height - view;
+      progressRef.current = total > 0 ? clamp01(y / total) : 0;
       // pause the renderer once the stage is fully off screen
-      handleRef.current?.setPaused(r.bottom < -50 || r.top > innerHeight + 50);
+      handleRef.current?.setPaused(y > height + 50 || y < -view - 50);
     };
     raf = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); ro.disconnect(); };
   }, []);
 
   /* per-frame DOM choreography, driven by the engine's smoothed progress */
@@ -87,10 +105,10 @@ export function Stage() {
       cueRef.current.style.visibility = c <= 0.001 ? 'hidden' : 'visible';
     }
     // soft aura that follows the model on screen, so it reads as the hero
+    // (transform only: resizing it every frame forced a layout per frame)
     if (auraRef.current) {
       const r = Math.max(160, f.center.r * 1.6);
-      auraRef.current.style.transform = `translate3d(${f.center.x - r}px, ${f.center.y - r}px, 0)`;
-      auraRef.current.style.width = auraRef.current.style.height = `${r * 2}px`;
+      auraRef.current.style.transform = `translate3d(${f.center.x - r}px, ${f.center.y - r}px, 0) scale(${r / AURA_BASE})`;
     }
 
     // "A different base" heading during the exploded view
@@ -215,7 +233,6 @@ export function Stage() {
     const canvas = canvasRef.current;
     if (!canvas) return;
     let disposed = false;
-    let onResize: (() => void) | null = null;
     const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) setMotion(false);
     import('@/components/three/engine')
@@ -231,8 +248,8 @@ export function Stage() {
           });
           handleRef.current = handle;
           if (process.env.NODE_ENV !== 'production') (window as unknown as Record<string, unknown>).__engine = handle;
-          onResize = () => handle.resize();
-          addEventListener('resize', onResize, { passive: true });
+          // the engine watches its own canvas size (ResizeObserver)
+          if (wipedRef.current) handle.intro();
         } catch {
           setFailed(true);
           setReady(true);
@@ -241,19 +258,17 @@ export function Stage() {
       .catch(() => { setFailed(true); setReady(true); });
     return () => {
       disposed = true;
-      if (onResize) removeEventListener('resize', onResize);
       handleRef.current?.dispose();
       handleRef.current = null;
     };
   }, [onFrame]);
 
+  // If the engine is still loading when the card wipes, it starts its intro
+  // as soon as it is created (see the engine effect), with no retry timers.
   const onWipe = useCallback(() => {
+    wipedRef.current = true;
     setLive(true);
-    const fire = () => handleRef.current?.intro();
-    fire();
-    // engine may still be loading; try again shortly
-    setTimeout(fire, 300);
-    setTimeout(fire, 900);
+    handleRef.current?.intro();
   }, []);
 
   const toggleMotion = () => {

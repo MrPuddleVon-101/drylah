@@ -34,6 +34,8 @@ export function Intro({ ready, onWipe }: { ready: boolean; onWipe: () => void })
       return;
     }
     window.scrollTo(0, 0);
+    // keep Lenis in step, or it would glide back to a restored mid-page position
+    (window as unknown as { __lenis?: { scrollTo(y: number, o?: object): void } }).__lenis?.scrollTo(0, { immediate: true, force: true });
     setPhase('in');
     lock(true);
     const t0 = performance.now();
