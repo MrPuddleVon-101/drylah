@@ -66,7 +66,7 @@ const POT_H = 1.3;
 const SOIL_Y = POT_Y + POT_H * 0.93;
 const WINDOW_PHI = [Math.PI / 2 - 0.95, Math.PI / 2 + 0.95];
 const WINDOW_HW = 0.27;
-const WINDOW_Y = [0.12, 0.32];
+const WINDOW_Y = [0.24, 0.37];  // overflow point sits above the normal water line (0.14)
 const WICK_Y = [0.06, 1.75];
 
 const GREEN = '#1d5c40';
@@ -618,8 +618,8 @@ export function buildModel(opts: { shadows: boolean }): Model {
     const g = pot.group;
     const tex = clayTextures();
     track(tex.map); track(tex.bump);
-    tex.map.repeat.set(3, 1.4);
-    tex.bump.repeat.set(3, 1.4);
+    tex.map.repeat.set(4, 5);
+    tex.bump.repeat.set(4, 5);
     const clay = track(new THREE.MeshStandardMaterial({ map: tex.map, bumpMap: tex.bump, bumpScale: 0.6, roughness: 0.92, metalness: 0 }));
     const H = POT_H;
     const prof = [
@@ -736,7 +736,7 @@ export function buildModel(opts: { shadows: boolean }): Model {
       [V(0.14, POT_Y + 0.02, 0.34), V(0.2, 0.6, 0.36), V(0.42, 0.47, 0.4), V(0.46, 0.32, 0.42), V(0.46, 0.2, 0.42)],
     ]),
     wick: arrowSet([[V(0, 0.12, 0.085), V(0, 0.4, 0.085), V(0, 0.66, 0.085)]]),
-    overflow: arrowSet([[V(0.3, 0.17, 0.55), V(0.7, 0.18, 0.62), V(Math.cos(outlet) * (R + 0.3), 0.2, Math.sin(outlet) * (R + 0.3))]]),
+    overflow: arrowSet([[V(0.3, 0.27, 0.55), V(0.7, 0.28, 0.62), V(Math.cos(outlet) * (R + 0.3), 0.3, Math.sin(outlet) * (R + 0.3))]]),
   };
 
   /* ---- a few drainage droplets, front half only ---- */
